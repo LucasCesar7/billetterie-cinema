@@ -66,6 +66,25 @@ public class SeanceService {
         return seances.stream().map(this::versResponse).toList();
     }
 
+    @Transactional(readOnly = true)
+    public List<Seance> listerToutesLesSeances() {
+        return seanceRepository.findAllWithFilmAndSalle();
+    }
+
+    @Transactional(readOnly = true)
+    public List<Seance> listerSeancesParFilm(Long filmId) {
+        return seanceRepository.findByFilmIdWithFilmAndSalle(filmId);
+    }
+
+    @Transactional(readOnly = true)
+    public Seance trouverSeance(Long id) {
+        return seanceRepository.findByIdWithFilmAndSalle(id)
+                .orElseThrow(() -> new RessourceIntrouvableException(
+                        "SEANCE_INTROUVABLE",
+                        "La séance avec l'identifiant " + id + " n'existe pas"
+                ));
+    }
+
     public SeanceResponse versResponse(Seance seance) {
         return new SeanceResponse(
                 seance.getId(),
@@ -76,4 +95,3 @@ public class SeanceService {
         );
     }
 }
-

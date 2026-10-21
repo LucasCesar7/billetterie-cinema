@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="fr" xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{layout :: entete('Tableau de Bord')}"></head>
+<body>
+    <header th:replace="~{layout :: barre-navigation('admin')}"></header>
+
+    <main class="conteneur">
+        <section class="entete-page">
+            <h1>Tableau de Bord d'Exploitation</h1>
+            <p>Supervision en temps réel des jauges de remplissage, de l'occupation des salles et des métriques métier.</p>
+        </section>
+
+        <!-- Métriques Micrometer & Système -->
+        <section class="stats-metriques">
+            <article class="carte-metrique">
+                <div class="metrique-label">Places confirmées</div>
+                <div class="metrique-valeur" style="color: var(--succes);" th:text="${tableau.totalPlacesReservees}">
+                    0
+                </div>
+                <div style="font-size: 0.78rem; color: var(--texte-discret); margin-top: 0.35rem;">
+                    Métrique Micrometer <code>places.reservees</code>
+                </div>
+            </article>
+
+            <article class="carte-metrique">
+                <div class="metrique-label">Refus surcapacité</div>
+                <div class="metrique-valeur" style="color: var(--danger);" th:text="${tableau.totalPlacesRefusees}">
+                    0
+                </div>
+                <div style="font-size: 0.78rem; color: var(--texte-discret); margin-top: 0.35rem;">
+                    Métrique Micrometer <code>places.refusees</code>
+                </div>
+            </article>
+
+            <article class="carte-metrique">
+                <div class="metrique-label">Films au catalogue</div>
+                <div class="metrique-valeur" style="color: var(--texte-principal);" th:text="${tableau.nombreFilms}">
+                    0
+                </div>
+                <div style="font-size: 0.78rem; color: var(--texte-discret); margin-top: 0.35rem;">
+                    Films programmés
+                </div>
+            </article>
+
+            <article class="carte-metrique">
+                <div class="metrique-label">Séances ouvertes</div>
+                <div class="metrique-valeur" style="color: var(--or-cinema);" th:text="${tableau.nombreSeances}">
+                    0
+                </div>
+                <div style="font-size: 0.78rem; color: var(--texte-discret); margin-top: 0.35rem;">
+                    Séances en exploitation
+                </div>
+            </article>
+        </section>
+
+        <!-- Table de suivi des séances -->
+        <section>
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+                <h2 style="font-size: 1.25rem; font-weight: 700; color: var(--texte-principal);">
+                    Suivi des jauges d'occupation par séance
+                </h2>
+                <a th:href="@{/actuator/health}" target="_blank" class="btn btn-sm btn-secondaire" style="font-size: 0.78rem;">
+                    Vérifier Actuator Health
+                </a>
+            </div>
+
+            <div class="table-conteneur">
+                <table class="table-admin">
+                    <thead>
+                        <tr>
+                            <th>Film</th>
+                            <th>Salle</th>
+                            <th>Date &amp; Heure</th>
+                            <th>Réservées</th>
+                            <th>Disponibles</th>
+                            <th style="min-width: 180px;">Jauge de Remplissage</th>
+                            <th>Taux</th>
+                            <th>Statut</th>
+                            <th>Action</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr th:each="seance : ${tableau.seances}">
+                            <td style="font-weight: 600; color: var(--texte-principal);" th:text="${seance.filmTitre}">Inception</td>
+                            <td th:text="${seance.nomSalle + ' (' + seance.capaciteSalle + ' pl.)'}">Salle 1 (100 pl.)</td>
+                            <td th:text="${seance.dateFormatee + ' - ' + seance.heureFormatee}">24 oct. - 20h30</td>
+                            <td style="font-weight: 600;" th:text="${seance.placesReservees}">25</td>
+                            <td th:text="${seance.placesRestantes}">75</td>
+                            <td>
+                                <div class="jauge-conteneur" style="margin-top: 0;">
+                                    <div class="jauge-barre" style="height: 10px;">
+                                        <div class="jauge-remplissage"
+                                             th:classappend="${seance.pourcentageOccupation >= 90} ? 'rouge' : (${seance.pourcentageOccupation >= 60} ? 'orange' : 'vert')"
+                                             th:style="'width: ' + ${seance.pourcentageOccupation} + '%;'">
+                                        </div>
+                                    </div>
+                                </div>
+                            </td>
+                            <td style="font-weight: 700;"
+                                th:classappend="${seance.pourcentageOccupation >= 90} ? 'dispo-complet' : 'dispo-ok'"
+                                th:text="${seance.pourcentageOccupation + ' %'}">
+                                25 %
+                            </td>
+                            <td>
+                                <span class="badge"
+                                      th:classappend="${seance.complete} ? 'badge-genre' : 'badge-duree'"
+                                      th:text="${seance.complete} ? 'COMPLET' : 'OUVERT'"
+                                      th:style="${seance.complete} ? 'color: var(--danger); border-color: var(--danger-border);' : ''">
+                                    OUVERT
+                                </span>
+                            </td>
+                            <td>
+                                <a th:href="@{'/seances/' + ${seance.id} + '/reserver'}" class="btn btn-sm btn-secondaire" style="padding: 0.25rem 0.6rem;">
+                                    Réserver
+                                </a>
+                            </td>
+                        </tr>
+                        <tr th:if="${#lists.isEmpty(tableau.seances)}">
+                            <td colspan="9" style="text-align: center; color: var(--texte-discret); padding: 2rem;">
+                                Aucune séance enregistrée pour le moment.
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </section>
+    </main>
+
+    <footer th:replace="~{layout :: pied-page}"></footer>
+</body>
+</html>
+

@@ -81,6 +81,28 @@ Ce document consigne l'état courant du projet, les choix d'architecture validé
 - **Livrable & Documentation :**
   - `README.md` complet rédigé à la racine avec prérequis, commandes de référence, vision UX, tableau des endpoints et comptes de démo.
   - `RAPPORT.md` finalisé avec matrice intégrale A1 à A10 et retour d'expérience.
-  - JAR exécutable autonome généré et validé (`target/billetterie-cinema-0.0.1-SNAPSHOT.jar`).
+
+### Phase 6 (Terminée & Validée) - Interface Utilisateur Web Thymeleaf
+- **Dépendance Maven & Intégration :**
+  - `spring-boot-starter-thymeleaf` ajouté dans `pom.xml` géré par le parent Spring Boot 4.1.1.
+  - Propriétés d'encodage `UTF-8` explicites dans `pom.xml`.
+- **Sécurité Web (`SecurityConfig`) :**
+  - Accès public sans authentification configuré pour les routes de consultation et d'action du front-end (`/`, `/films`, `/seances/**`, `/reserver/**`, `/confirmation/**`, `/annuler/**`, `/admin/tableau-de-bord`, `/css/**`, `/js/**`, `/images/**`, `/favicon.ico`).
+  - Préservation stricte et intégrale de la sécurité HTTP Basic sur l'API REST (`/api/...`).
+- **Modèles de Vue Immuables (`fr.univ.billetterie.dto.web`) :**
+  - `FilmCatalogueVue`, `SeanceResumeVue`, `SeanceDetailVue`, `BilletConfirmationVue`, `TableauDeBordVue` (records Java natifs, zéro Lombok, prévention absolue des `LazyInitializationException` avec `JOIN FETCH`).
+- **Contrôleur Web (`fr.univ.billetterie.controller.web.CinemaWebController`) :**
+  - `GET /` et `GET /films` : affichage du catalogue avec horaires, salles, tarifs et badges d'état.
+  - `GET /seances/{id}/reserver` : formulaire de réservation avec jauge visuelle et calcul dynamique du montant en vanilla JS.
+  - `POST /reserver` : réservation transactionnelle avec redirection `/confirmation/{code}` ou réaffichage élégant avec message d'alerte en cas de surréservation.
+  - `GET /confirmation/{code}` : billet numérique stylisé avec détails complets, bouton d'impression et annulation.
+  - `POST /annuler/{code}` : annulation immédiate avec libération des places et redirection accueil.
+  - `GET /admin/tableau-de-bord` : supervision en direct des jauges d'occupation de toutes les séances et des métriques Micrometer (`places.reservees` et `places.refusees`).
+- **Charte Graphique et Vues HTML5 :**
+  - Design cinéma artisanal sobre et moderne (fond `#0b0f17`, cartes `#151d2a`, bordures `#233044`, or `#eab308`, succès `#10b981`, danger `#ef4444`).
+  - Templates dans `src/main/resources/templates/` (`layout.html`, `index.html`, `reservation.html`, `confirmation.html`, `tableau-de-bord.html`) et CSS `src/main/resources/static/css/style.css`.
+- **Validation Automatisée (`CinemaWebControllerTest`) :**
+  - 7 tests web validés (affichage catalogue, affichage réservation, réservation nominale 3xx avec redirection, refus surréservation 200 avec alerte, affichage billet, annulation 3xx avec libération, tableau de bord admin).
 - **Bilan d'exécution final :**
-  - 13 tests d'intégration au vert, 0 échec, 0 erreur (`BUILD SUCCESS`).
+  - 20 tests d'intégration au vert sur MySQL 8.4 via Testcontainers, 0 échec, 0 erreur (`BUILD SUCCESS`).
+  - JAR autonome `billetterie-cinema-0.0.1-SNAPSHOT.jar` repackagé avec succès.

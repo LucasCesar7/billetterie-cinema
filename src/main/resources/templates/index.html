@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="fr" xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{layout :: entete('Films et Séances')}"></head>
+<body>
+    <header th:replace="~{layout :: barre-navigation('films')}"></header>
+
+    <main class="conteneur">
+        <div th:if="${messageSucces}" class="alerte alerte-succes">
+            <span>✓</span>
+            <span th:text="${messageSucces}">Opération réussie</span>
+        </div>
+
+        <div th:if="${messageErreur}" class="alerte alerte-danger">
+            <span>⚠</span>
+            <span th:text="${messageErreur}">Une erreur est survenue</span>
+        </div>
+
+        <section class="entete-page">
+            <h1>Films à l'affiche</h1>
+            <p>Découvrez la programmation actuelle et réservez directement vos places.</p>
+        </section>
+
+        <section class="grille-films">
+            <article class="carte-film" th:each="film : ${films}">
+                <div class="film-entete">
+                    <h2 class="film-titre" th:text="${film.titre}">Titre du Film</h2>
+                    <div class="film-metadonnees">
+                        <span class="badge badge-genre" th:if="${film.genre}" th:text="${film.genre}">Genre</span>
+                        <span class="badge badge-duree" th:text="${film.dureeFormatee}">2h 15min</span>
+                    </div>
+                </div>
+
+                <div class="film-seances-titre">Séances disponibles</div>
+
+                <div class="liste-seances" th:if="${!#lists.isEmpty(film.seances)}">
+                    <div class="seance-item" th:each="seance : ${film.seances}">
+                        <div class="seance-horaire">
+                            <span class="seance-heure" th:text="${seance.heureFormatee}">20h30</span>
+                            <span class="seance-date" th:text="${seance.dateFormatee}">mercredi 24 octobre</span>
+                        </div>
+
+                        <div class="seance-infos">
+                            <span class="seance-salle" th:text="${seance.nomSalle}">Salle 1</span>
+                            <span class="seance-prix" th:text="${#numbers.formatDecimal(seance.prixUnitaire, 1, 2) + ' €'}">10,50 €</span>
+                            <span class="seance-dispo" th:classappend="${seance.complete} ? 'dispo-complet' : 'dispo-ok'"
+                                  th:text="${seance.complete} ? 'Complet' : ${seance.placesRestantes + ' places restantes'}">
+                                45 places
+                            </span>
+                        </div>
+
+                        <div>
+                            <a th:if="${!seance.complete}" th:href="@{'/seances/' + ${seance.id} + '/reserver'}" class="btn btn-sm btn-or">
+                                Réserver
+                            </a>
+                            <span th:if="${seance.complete}" class="btn btn-sm btn-desactive">
+                                Complet
+                            </span>
+                        </div>
+                    </div>
+                </div>
+
+                <div th:if="${#lists.isEmpty(film.seances)}" style="color: var(--texte-discret); font-size: 0.88rem; padding: 1rem 0;">
+                    Aucune séance programmée pour ce film.
+                </div>
+            </article>
+        </section>
+    </main>
+
+    <footer th:replace="~{layout :: pied-page}"></footer>
+</body>
+</html>
+

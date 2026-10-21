@@ -48,6 +48,11 @@ public class FilmService {
         return films.stream().map(this::versResponse).toList();
     }
 
+    @Transactional(readOnly = true)
+    public List<Film> listerTousLesFilms() {
+        return filmRepository.findAll();
+    }
+
     public FilmResponse versResponse(Film film) {
         return new FilmResponse(
                 film.getId(),
@@ -58,4 +63,3 @@ public class FilmService {
         );
     }
 }
-

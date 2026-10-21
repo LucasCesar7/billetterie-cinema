@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="fr" xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{layout :: entete('Confirmation de Réservation')}"></head>
+<body>
+    <header th:replace="~{layout :: barre-navigation('films')}"></header>
+
+    <main class="conteneur">
+        <div th:if="${messageSucces}" class="alerte alerte-succes">
+            <span>✓</span>
+            <span th:text="${messageSucces}">Réservation confirmée avec succès !</span>
+        </div>
+
+        <div th:if="${messageErreur}" class="alerte alerte-danger">
+            <span>⚠</span>
+            <span th:text="${messageErreur}">Une erreur est survenue</span>
+        </div>
+
+        <div class="conteneur-billet">
+            <article class="billet-cinema">
+                <header class="billet-entete">
+                    <span class="billet-cinema-titre">Billet Numérique • Grand Écran</span>
+                    <span class="billet-statut" th:classappend="${billet.statut}"
+                          th:text="${billet.statut == 'CONFIRMEE' ? 'CONFIRMÉE' : 'ANNULÉE'}">
+                        CONFIRMÉE
+                    </span>
+                </header>
+
+                <div class="billet-corps">
+                    <div class="billet-code-bloc">
+                        <div class="billet-code-label">Code de réservation officiel</div>
+                        <div class="billet-code-valeur" th:text="${billet.code}">RES-A1B2C3D4</div>
+                    </div>
+
+                    <div class="billet-grille">
+                        <div class="billet-champ">
+                            <span class="billet-champ-label">Film</span>
+                            <span class="billet-champ-valeur" style="color: var(--texte-principal);" th:text="${billet.filmTitre}">Inception</span>
+                        </div>
+
+                        <div class="billet-champ">
+                            <span class="billet-champ-label">Salle</span>
+                            <span class="billet-champ-valeur" th:text="${billet.nomSalle}">Salle 1</span>
+                        </div>
+
+                        <div class="billet-champ">
+                            <span class="billet-champ-label">Date &amp; Horaire</span>
+                            <span class="billet-champ-valeur" th:text="${billet.dateFormatee + ' à ' + billet.heureFormatee}">Mercredi 24 octobre à 20h30</span>
+                        </div>
+
+                        <div class="billet-champ">
+                            <span class="billet-champ-label">Nombre de places</span>
+                            <span class="billet-champ-valeur" th:text="${billet.nombrePlaces + ' place(s)'}">2 places</span>
+                        </div>
+
+                        <div class="billet-champ">
+                            <span class="billet-champ-label">Montant payé</span>
+                            <span class="billet-champ-valeur" style="color: var(--or-cinema);"
+                                  th:text="${#numbers.formatDecimal(billet.montantTotal, 1, 2) + ' €'}">21,00 €</span>
+                        </div>
+
+                        <div class="billet-champ">
+                            <span class="billet-champ-label">Client</span>
+                            <span class="billet-champ-valeur" style="font-size: 0.95rem;" th:text="${billet.emailClient}">client@domaine.fr</span>
+                        </div>
+                    </div>
+
+                    <div th:if="${billet.annulee}" class="alerte alerte-danger" style="margin-bottom: 0;">
+                        <span>⚠</span>
+                        <span>Ce billet a été annulé. Les places ont été libérées pour les autres spectateurs.</span>
+                    </div>
+                </div>
+
+                <footer class="billet-pied">
+                    <div>
+                        <button type="button" class="btn btn-secondaire" onclick="window.print()">
+                            🖨 Imprimer
+                        </button>
+                    </div>
+
+                    <div style="display: flex; gap: 0.75rem; align-items: center;">
+                        <a th:href="@{/}" class="btn btn-secondaire">Retour à l'accueil</a>
+
+                        <form th:if="${!billet.annulee}" th:action="@{'/annuler/' + ${billet.code}}" method="post"
+                              onsubmit="return confirm('Êtes-vous certain de vouloir annuler cette réservation ? Vos places seront immédiatement remises en vente.');">
+                            <button type="submit" class="btn btn-danger">
+                                Annuler la réservation
+                            </button>
+                        </form>
+                    </div>
+                </footer>
+            </article>
+        </div>
+    </main>
+
+    <footer th:replace="~{layout :: pied-page}"></footer>
+</body>
+</html>
+

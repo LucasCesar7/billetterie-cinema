@@ -95,4 +95,22 @@ public class ReservationService {
         reservation.setStatut(StatutReservation.ANNULEE);
         reservationRepository.save(reservation);
     }
+
+    @Transactional(readOnly = true)
+    public Reservation trouverReservation(String code) {
+        return reservationRepository.findByCodeWithSeanceAndFilmAndSalle(code)
+                .orElseThrow(() -> new RessourceIntrouvableException(
+                        "RESERVATION_INTROUVABLE",
+                        "La réservation avec le code " + code + " n'existe pas"
+                ));
+    }
+
+    public int compterPlacesRestantes(Long seanceId, int capaciteSalle) {
+        int placesReservees = reservationRepository.sumPlacesReservees(seanceId, StatutReservation.CONFIRMEE);
+        return Math.max(0, capaciteSalle - placesReservees);
+    }
+
+    public int compterPlacesReservees(Long seanceId) {
+        return reservationRepository.sumPlacesReservees(seanceId, StatutReservation.CONFIRMEE);
+    }
 }

@@ -19,5 +19,14 @@ public interface SeanceRepository extends JpaRepository<Seance, Long> {
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("SELECT s FROM Seance s WHERE s.id = :id")
     Optional<Seance> findByIdWithLock(@Param("id") Long id);
+
+    @Query("SELECT s FROM Seance s JOIN FETCH s.film JOIN FETCH s.salle ORDER BY s.debut ASC")
+    List<Seance> findAllWithFilmAndSalle();
+
+    @Query("SELECT s FROM Seance s JOIN FETCH s.film JOIN FETCH s.salle WHERE s.id = :id")
+    Optional<Seance> findByIdWithFilmAndSalle(@Param("id") Long id);
+
+    @Query("SELECT s FROM Seance s JOIN FETCH s.film JOIN FETCH s.salle WHERE s.film.id = :filmId ORDER BY s.debut ASC")
+    List<Seance> findByFilmIdWithFilmAndSalle(@Param("filmId") Long filmId);
 }
 

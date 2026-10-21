@@ -1,0 +1,717 @@
+/* ===================================================================
+   Feuille de style - Billetterie Cinéma (Thème Sombre Artisanal)
+   Couleurs : Fond #0b0f17, Cartes #151d2a, Bordures #233044, Or #eab308
+   =================================================================== */
+
+:root {
+  --bg-principal: #0b0f17;
+  --bg-carte: #151d2a;
+  --bg-survol: #1e293b;
+  --bordure: #233044;
+  --bordure-focus: #eab308;
+  --texte-principal: #f1f5f9;
+  --texte-secondaire: #94a3b8;
+  --texte-discret: #64748b;
+  --or-cinema: #eab308;
+  --or-cinema-hover: #ca8a04;
+  --succes: #10b981;
+  --succes-bg: rgba(16, 185, 129, 0.12);
+  --succes-border: #059669;
+  --danger: #ef4444;
+  --danger-bg: rgba(239, 68, 68, 0.12);
+  --danger-border: #dc2626;
+  --danger-hover: #b91c1c;
+  --avertissement: #f59e0b;
+  --arrondi-sm: 6px;
+  --arrondi-md: 10px;
+  --arrondi-lg: 14px;
+}
+
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  background-color: var(--bg-principal);
+  color: var(--texte-principal);
+  line-height: 1.6;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+a {
+  color: var(--or-cinema);
+  text-decoration: none;
+  transition: color 0.15s ease;
+}
+
+a:hover {
+  color: var(--or-cinema-hover);
+}
+
+/* ----------------- Barre de navigation ----------------- */
+.navbar {
+  background-color: var(--bg-carte);
+  border-bottom: 1px solid var(--bordure);
+  position: sticky;
+  top: 0;
+  z-index: 50;
+}
+
+.navbar-conteneur {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0.9rem 1.5rem;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.logo-cinema {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: var(--texte-principal);
+  letter-spacing: -0.02em;
+}
+
+.logo-cinema .icone {
+  color: var(--or-cinema);
+}
+
+.nav-liens {
+  display: flex;
+  align-items: center;
+  gap: 1.25rem;
+}
+
+.nav-lien {
+  color: var(--texte-secondaire);
+  font-size: 0.95rem;
+  font-weight: 500;
+  padding: 0.4rem 0.8rem;
+  border-radius: var(--arrondi-sm);
+  transition: all 0.15s ease;
+}
+
+.nav-lien:hover, .nav-lien.actif {
+  color: var(--texte-principal);
+  background-color: var(--bg-survol);
+}
+
+.nav-lien-admin {
+  border: 1px solid var(--bordure);
+}
+
+/* ----------------- Conteneur Principal ----------------- */
+.conteneur {
+  max-width: 1200px;
+  width: 100%;
+  margin: 2rem auto;
+  padding: 0 1.5rem;
+  flex: 1;
+}
+
+/* ----------------- En-têtes de Page ----------------- */
+.entete-page {
+  margin-bottom: 2rem;
+}
+
+.entete-page h1 {
+  font-size: 1.85rem;
+  font-weight: 700;
+  color: var(--texte-principal);
+  margin-bottom: 0.35rem;
+  letter-spacing: -0.02em;
+}
+
+.entete-page p {
+  color: var(--texte-secondaire);
+  font-size: 1rem;
+}
+
+/* ----------------- Alertes et Messages ----------------- */
+.alerte {
+  padding: 1rem 1.25rem;
+  border-radius: var(--arrondi-md);
+  margin-bottom: 1.75rem;
+  display: flex;
+  align-items: flex-start;
+  gap: 0.75rem;
+  font-size: 0.95rem;
+}
+
+.alerte-succes {
+  background-color: var(--succes-bg);
+  border: 1px solid var(--succes-border);
+  color: #34d399;
+}
+
+.alerte-danger {
+  background-color: var(--danger-bg);
+  border: 1px solid var(--danger-border);
+  color: #f87171;
+}
+
+/* ----------------- Grille des Films ----------------- */
+.grille-films {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(360px, 1fr));
+  gap: 1.75rem;
+}
+
+.carte-film {
+  background-color: var(--bg-carte);
+  border: 1px solid var(--bordure);
+  border-radius: var(--arrondi-lg);
+  padding: 1.5rem;
+  display: flex;
+  flex-direction: column;
+  transition: border-color 0.2s ease, transform 0.2s ease;
+}
+
+.carte-film:hover {
+  border-color: #334155;
+  transform: translateY(-2px);
+}
+
+.film-entete {
+  margin-bottom: 1.25rem;
+  padding-bottom: 1rem;
+  border-bottom: 1px solid var(--bordure);
+}
+
+.film-titre {
+  font-size: 1.35rem;
+  font-weight: 700;
+  color: var(--texte-principal);
+  margin-bottom: 0.4rem;
+}
+
+.film-metadonnees {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  align-items: center;
+}
+
+.badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.2rem 0.55rem;
+  border-radius: var(--arrondi-sm);
+  font-size: 0.78rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+}
+
+.badge-genre {
+  background-color: #1e293b;
+  color: var(--texte-secondaire);
+  border: 1px solid var(--bordure);
+}
+
+.badge-duree {
+  background-color: rgba(234, 179, 8, 0.12);
+  color: var(--or-cinema);
+  border: 1px solid rgba(234, 179, 8, 0.3);
+}
+
+.film-seances-titre {
+  font-size: 0.85rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--texte-discret);
+  font-weight: 600;
+  margin-bottom: 0.85rem;
+}
+
+.liste-seances {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  flex: 1;
+}
+
+.seance-item {
+  background-color: #0f1723;
+  border: 1px solid var(--bordure);
+  border-radius: var(--arrondi-md);
+  padding: 0.85rem 1rem;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1rem;
+  transition: all 0.15s ease;
+}
+
+.seance-item:hover {
+  border-color: #384860;
+  background-color: #131c2b;
+}
+
+.seance-horaire {
+  display: flex;
+  flex-direction: column;
+}
+
+.seance-heure {
+  font-size: 1.15rem;
+  font-weight: 700;
+  color: var(--texte-principal);
+}
+
+.seance-date {
+  font-size: 0.8rem;
+  color: var(--texte-secondaire);
+}
+
+.seance-infos {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  text-align: right;
+}
+
+.seance-salle {
+  font-size: 0.85rem;
+  font-weight: 500;
+  color: var(--texte-principal);
+}
+
+.seance-prix {
+  font-size: 0.82rem;
+  color: var(--or-cinema);
+  font-weight: 600;
+}
+
+.seance-dispo {
+  font-size: 0.75rem;
+  margin-top: 0.2rem;
+}
+
+.dispo-ok {
+  color: var(--succes);
+}
+
+.dispo-complet {
+  color: var(--danger);
+}
+
+/* ----------------- Boutons ----------------- */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  padding: 0.6rem 1.15rem;
+  border-radius: var(--arrondi-sm);
+  font-size: 0.9rem;
+  font-weight: 600;
+  cursor: pointer;
+  border: none;
+  transition: all 0.15s ease;
+  font-family: inherit;
+}
+
+.btn-sm {
+  padding: 0.35rem 0.75rem;
+  font-size: 0.82rem;
+}
+
+.btn-or {
+  background-color: var(--or-cinema);
+  color: #0b0f17;
+}
+
+.btn-or:hover {
+  background-color: var(--or-cinema-hover);
+  color: #000000;
+}
+
+.btn-danger {
+  background-color: var(--danger);
+  color: #ffffff;
+}
+
+.btn-danger:hover {
+  background-color: var(--danger-hover);
+}
+
+.btn-secondaire {
+  background-color: #1e293b;
+  color: var(--texte-principal);
+  border: 1px solid var(--bordure);
+}
+
+.btn-secondaire:hover {
+  background-color: #2b394e;
+  border-color: #3b4d66;
+}
+
+.btn-desactive {
+  background-color: #1e293b;
+  color: var(--texte-discret);
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+/* ----------------- Page Réservation ----------------- */
+.carte-detail-seance {
+  background-color: var(--bg-carte);
+  border: 1px solid var(--bordure);
+  border-radius: var(--arrondi-lg);
+  padding: 1.75rem;
+  margin-bottom: 2rem;
+}
+
+.detail-grille {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 1.25rem;
+  margin-top: 1.25rem;
+}
+
+.detail-stat {
+  background-color: #0f1723;
+  border: 1px solid var(--bordure);
+  border-radius: var(--arrondi-md);
+  padding: 1rem;
+}
+
+.detail-label {
+  font-size: 0.78rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--texte-discret);
+  margin-bottom: 0.25rem;
+}
+
+.detail-valeur {
+  font-size: 1.2rem;
+  font-weight: 700;
+  color: var(--texte-principal);
+}
+
+.jauge-conteneur {
+  margin-top: 0.6rem;
+}
+
+.jauge-barre {
+  background-color: #1e293b;
+  height: 8px;
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.jauge-remplissage {
+  height: 100%;
+  border-radius: 4px;
+  transition: width 0.3s ease;
+}
+
+.jauge-remplissage.vert {
+  background-color: var(--succes);
+}
+
+.jauge-remplissage.orange {
+  background-color: var(--avertissement);
+}
+
+.jauge-remplissage.rouge {
+  background-color: var(--danger);
+}
+
+/* ----------------- Formulaire de Réservation ----------------- */
+.form-reservation {
+  background-color: var(--bg-carte);
+  border: 1px solid var(--bordure);
+  border-radius: var(--arrondi-lg);
+  padding: 1.75rem;
+}
+
+.form-groupe {
+  margin-bottom: 1.35rem;
+}
+
+.form-label {
+  display: block;
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--texte-principal);
+  margin-bottom: 0.45rem;
+}
+
+.form-input {
+  width: 100%;
+  background-color: #0b0f17;
+  border: 1px solid var(--bordure);
+  border-radius: var(--arrondi-sm);
+  padding: 0.75rem 1rem;
+  color: var(--texte-principal);
+  font-size: 0.95rem;
+  font-family: inherit;
+  transition: border-color 0.15s ease;
+}
+
+.form-input:focus {
+  outline: none;
+  border-color: var(--or-cinema);
+}
+
+.form-aide {
+  font-size: 0.8rem;
+  color: var(--texte-discret);
+  margin-top: 0.3rem;
+}
+
+.recap-prix {
+  background-color: #0f1723;
+  border: 1px dashed var(--bordure);
+  border-radius: var(--arrondi-md);
+  padding: 1.25rem;
+  margin: 1.5rem 0;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.recap-prix-label {
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--texte-secondaire);
+}
+
+.recap-prix-montant {
+  font-size: 1.6rem;
+  font-weight: 800;
+  color: var(--or-cinema);
+}
+
+/* ----------------- Billet de Cinéma (Confirmation) ----------------- */
+.conteneur-billet {
+  max-width: 650px;
+  margin: 1rem auto 2.5rem;
+}
+
+.billet-cinema {
+  background-color: var(--bg-carte);
+  border: 2px solid #2d3d52;
+  border-radius: var(--arrondi-lg);
+  overflow: hidden;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.4);
+  position: relative;
+}
+
+.billet-entete {
+  background-color: #0f1723;
+  padding: 1.5rem 2rem;
+  border-bottom: 2px dashed #2d3d52;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.billet-cinema-titre {
+  font-size: 0.95rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--or-cinema);
+  font-weight: 700;
+}
+
+.billet-statut {
+  font-size: 0.8rem;
+  padding: 0.25rem 0.65rem;
+  border-radius: var(--arrondi-sm);
+  font-weight: 700;
+}
+
+.billet-statut.CONFIRMEE {
+  background-color: var(--succes-bg);
+  color: var(--succes);
+  border: 1px solid var(--succes-border);
+}
+
+.billet-statut.ANNULEE {
+  background-color: var(--danger-bg);
+  color: var(--danger);
+  border: 1px solid var(--danger-border);
+}
+
+.billet-corps {
+  padding: 2rem;
+}
+
+.billet-code-bloc {
+  text-align: center;
+  background-color: #0b0f17;
+  border: 1px solid var(--bordure);
+  border-radius: var(--arrondi-md);
+  padding: 1.25rem;
+  margin-bottom: 1.75rem;
+}
+
+.billet-code-label {
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--texte-discret);
+  margin-bottom: 0.25rem;
+}
+
+.billet-code-valeur {
+  font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
+  font-size: 1.6rem;
+  font-weight: 800;
+  color: var(--or-cinema);
+  letter-spacing: 0.08em;
+}
+
+.billet-grille {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 1.25rem;
+  margin-bottom: 1.75rem;
+}
+
+.billet-champ {
+  display: flex;
+  flex-direction: column;
+}
+
+.billet-champ-label {
+  font-size: 0.78rem;
+  color: var(--texte-discret);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  margin-bottom: 0.2rem;
+}
+
+.billet-champ-valeur {
+  font-size: 1.05rem;
+  font-weight: 600;
+  color: var(--texte-principal);
+}
+
+.billet-pied {
+  background-color: #0f1723;
+  padding: 1.5rem 2rem;
+  border-top: 1px solid var(--bordure);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+/* ----------------- Tableau de Bord Admin ----------------- */
+.stats-metriques {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 1.25rem;
+  margin-bottom: 2rem;
+}
+
+.carte-metrique {
+  background-color: var(--bg-carte);
+  border: 1px solid var(--bordure);
+  border-radius: var(--arrondi-lg);
+  padding: 1.35rem;
+}
+
+.metrique-label {
+  font-size: 0.8rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--texte-discret);
+  margin-bottom: 0.4rem;
+}
+
+.metrique-valeur {
+  font-size: 1.85rem;
+  font-weight: 800;
+  color: var(--texte-principal);
+}
+
+.table-conteneur {
+  background-color: var(--bg-carte);
+  border: 1px solid var(--bordure);
+  border-radius: var(--arrondi-lg);
+  overflow: hidden;
+}
+
+.table-admin {
+  width: 100%;
+  border-collapse: collapse;
+  text-align: left;
+  font-size: 0.92rem;
+}
+
+.table-admin th {
+  background-color: #0f1723;
+  padding: 1rem 1.25rem;
+  font-size: 0.78rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--texte-discret);
+  font-weight: 600;
+  border-bottom: 1px solid var(--bordure);
+}
+
+.table-admin td {
+  padding: 1rem 1.25rem;
+  border-bottom: 1px solid var(--bordure);
+  vertical-align: middle;
+}
+
+.table-admin tr:last-child td {
+  border-bottom: none;
+}
+
+.table-admin tr:hover {
+  background-color: #121a26;
+}
+
+/* ----------------- Footer ----------------- */
+.pied-de-page {
+  background-color: var(--bg-carte);
+  border-top: 1px solid var(--bordure);
+  padding: 1.5rem;
+  text-align: center;
+  font-size: 0.85rem;
+  color: var(--texte-discret);
+  margin-top: auto;
+}
+
+.pied-de-page a {
+  color: var(--texte-secondaire);
+}
+
+.pied-de-page a:hover {
+  color: var(--or-cinema);
+}
+
+/* ----------------- Responsive ----------------- */
+@media (max-width: 768px) {
+  .navbar-conteneur {
+    flex-direction: column;
+    gap: 0.75rem;
+  }
+  .grille-films {
+    grid-template-columns: 1fr;
+  }
+  .billet-grille {
+    grid-template-columns: 1fr;
+  }
+  .billet-pied {
+    flex-direction: column;
+    gap: 1rem;
+    align-items: stretch;
+  }
+}
+

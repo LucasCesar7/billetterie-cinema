@@ -1,31 +1,37 @@
 # Backend Billetterie Cinéma - Haute Fiabilité (R5.08)
 
-Backend de billetterie de cinéma développé en **Java 25**, **Spring Boot 4.1.1**, **MySQL 8.4** et **Flyway**, conçu pour garantir un invariant strict de capacité même sous forte contention multi-threadée.
+Backend de billetterie de cinéma développé en **Java 25**, **Spring Boot 4.1.1**, **MySQL 8.4**, **Flyway** et **Thymeleaf**, conçu pour garantir un invariant strict de capacité même sous forte contention multi-threadée.
 
 ---
 
 ## 1. Présentation & Philosophie d'Ingénierie
 
 ### Contexte technique
-Ce projet implémente l'API d'un système de billetterie de cinéma haute fiabilité. Il repose sur un modèle relationnel strict, une étanchéité totale des couches par DTOs (`record` Java 25 natifs), une sécurité HTTP Basic sans état (stateless), ainsi qu'une sérialisation des réservations par verrouillage pessimiste au niveau de MySQL InnoDB.
+Ce projet implémente le système complet de billetterie d'un cinéma :
+- **Modèle relationnel strict :** Intégrité référentielle en base MySQL, validation Flyway et Hibernate `ddl-auto: validate`.
+- **Architecture en couches étanches :** Séparation nette entre contrôleurs, services transactionnels et persistance.
+- **Java 25 natif & Zéro Lombok :** Exploitation intégrale des `record` immuables pour tous les DTOs et modèles de vue.
+- **Sécurité HTTP Basic sans état (stateless) :** Mots de passe chiffrés BCrypt et contrôle d'accès par rôles (`CLIENT`, `PROGRAMMATEUR`, `ADMIN`).
+- **Verrouillage pessimiste InnoDB (`PESSIMISTIC_WRITE`) :** Ordonnancement séquentiel via `SELECT ... FOR UPDATE` pour empêcher toute surréservation sans mécanisme de retry côté client.
+- **Interface Web Artisanale (Thymeleaf) :** Vues HTML5 responsives, sobres et contrastées au thème cinéma ardoise et or.
 
 ### Méthodologie de développement assisté par IA
 Le développement a été réalisé en binôme avec l'agent autonome Antigravity (piloté par Gemini 3.8 Flash) sous VS Code, selon un cadre d'ingénierie rigoureux :
 - **Cadrage humain préalable :** Rédaction d'un fichier de règles strictes ([`.agentrules`](.agentrules)) imposant du code 100 % en français, zéro processeur d'annotations tiers (zéro Lombok), l'exclusion totale de bases simulées comme H2, et l'usage exclusif de conteneurs MySQL 8.4 via Testcontainers.
-- **Découpage modulaire par phases :** Progression incrémentale par prompts structurés (Phase 1 : socle et wrapper, Phase 2 : persistance et Flyway, Phase 3 : API REST et sécurité, Phase 4 : concurrence et recette A8, Phase 5 : exploitation, métriques et livrable).
-- **Zéro génération aveugle :** Chaque phase a fait l'objet d'une compilation du bytecode, d'une isolation sur branche Git dédiée, d'une exécution de tests automatisés sous conteneur réel et d'une consignation dans un journal persistant ([`MEMOIRE.md`](MEMOIRE.md)) pour prévenir toute régression.
+- **Découpage modulaire par phases :** Progression incrémentale par branches Git dédiées (Phase 1 à Phase 6).
+- **Zéro régression :** Chaque phase a fait l'objet d'une compilation du bytecode, d'une exécution de tests automatisés sous conteneurs réels et d'une consignation dans un journal persistant ([`MEMOIRE.md`](MEMOIRE.md)).
 
 ---
 
-## 2. Vision Ergonomie & Futur Front-End
+## 2. Interface Utilisateur Web (Thymeleaf)
 
-L'API et ses DTOs ont été modélisés pour alimenter un futur front-end web épuré, réactif et accessible :
-- **Rejet du design générique IA :** Refus des interfaces stéréotypées (cartes surchargées, dégradés violets superflus, animations distrayantes).
-- **Parcours utilisateur fluide en 3 étapes :**
-  1. *Sélection du film et de la séance* : affichage clair des horaires, du genre et du tarif unitaire.
-  2. *Choix des places avec jauge en direct* : visualisation en temps réel du nombre de places restantes avant saturation.
-  3. *Confirmation instantanée* : récapitulatif avec code unique de réservation (`RES-XXXXXXXXXX`), statut confirmé et montant total débité en `BigDecimal`.
-- **Contrat d'API robuste :** Les réponses d'erreur (`ErreurResponse`) fournissent un code d'erreur textuel stable (`CAPACITE_INSUFFISANTE`, `VALIDATION_ECHOUEE`, `RESSOURCE_INTROUVABLE`) permettant au front-end d'afficher des notifications utilisateur précises sans interpréter de code technique interne.
+L'application intègre un front-end complet développé avec le moteur de template **Thymeleaf**, offrant une expérience utilisateur sobre, fluide et accessible sans dépendance à des frameworks JavaScript lourds :
+
+- **Design sombre cinéma artisanal :** Fond ardoise très sombre (`#0b0f17`), conteneurs de cartes (`#151d2a`), bordures discrètes (`#233044`) et accents dorés cinéma (`#eab308`).
+- **Catalogue des films & séances :** Accessible sur `http://localhost:8080/` ou `http://localhost:8080/films`. Affiche les affiches, genres, durées formatées, salles, horaires, prix et disponibilités en direct.
+- **Formulaire de réservation interactif :** Accessible depuis chaque séance via `http://localhost:8080/seances/{id}/reserver`. Intègre une jauge d'occupation en temps réel et un calcul instantané du montant total en JavaScript natif. En cas de surréservation, la vue est réaffichée immédiatement avec une alerte rouge explicite.
+- **Billet numérique stylisé :** Accessible sur `http://localhost:8080/confirmation/{code}`. Billet format ticket de cinéma avec récapitulatif complet, code officiel unique (`RES-XXXXXXXXXX`), bouton d'impression directe (`window.print()`) et formulaire d'annulation sécurisé.
+- **Tableau de bord d'exploitation :** Accessible sur `http://localhost:8080/admin/tableau-de-bord`. Supervision en temps réel des jauges de remplissage par séance et des métriques métier Micrometer.
 
 ---
 
@@ -59,7 +65,7 @@ docker compose down
 Le projet intègre le wrapper Maven (`mvnw` / `mvnw.cmd`), garantissant une reproductibilité exacte du build sans installation locale de Maven.
 
 ### Exécution de la suite de tests et vérification globale
-Lance l'ensemble des tests (schéma, contrôleurs, sécurité, concurrence multi-threadée, exploitation) sous conteneurs MySQL réels :
+Lance l'ensemble des 20 tests d'intégration (schéma, contrôleurs REST, sécurité, concurrence multi-threadée, exploitation et contrôleur web Thymeleaf) sous conteneurs MySQL 8.4 réels :
 
 Sous Windows (PowerShell / CMD) :
 ```powershell
@@ -82,7 +88,7 @@ L'application démarre par défaut sur le port HTTP `8080`.
 
 ## 6. Comptes de Démonstration (Authentification HTTP Basic)
 
-L'API utilise une authentification HTTP Basic sans état avec mots de passe hachés via BCrypt :
+L'API REST utilise une authentification HTTP Basic sans état avec mots de passe hachés via BCrypt :
 
 | Identifiant | Mot de passe | Rôle Spring Security | Périmètre d'action |
 | :--- | :--- | :--- | :--- |
@@ -92,8 +98,19 @@ L'API utilise une authentification HTTP Basic sans état avec mots de passe hach
 
 ---
 
-## 7. Tableau Récapitulatif de l'API REST
+## 7. Tableau Récapitulatif des Endpoints
 
+### 7.1. Interface Web Thymeleaf (HTML5 / Navigation publique)
+| Méthode | URL | Rôle fonctionnel |
+| :--- | :--- | :--- |
+| `GET` | `/` ou `/films` | Catalogue public des films et séances programmées |
+| `GET` | `/seances/{id}/reserver` | Page de réservation d'une séance avec jauge et calcul live |
+| `POST` | `/reserver` | Soumission du formulaire de réservation (redirection ou erreur) |
+| `GET` | `/confirmation/{code}` | Vue du billet numérique et option d'annulation |
+| `POST` | `/annuler/{code}` | Annulation de la réservation et libération des places |
+| `GET` | `/admin/tableau-de-bord` | Tableau de bord administrateur (jauges et métriques) |
+
+### 7.2. API REST (Consommation programmatique)
 | Méthode | URL | Accès / Rôle | Rôle fonctionnel | Codes HTTP attendus |
 | :--- | :--- | :--- | :--- | :--- |
 | `GET` | `/api/films` | Public (Anonyme) | Liste l'ensemble des films à l'affiche | `200 OK` |

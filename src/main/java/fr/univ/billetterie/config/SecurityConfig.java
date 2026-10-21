@@ -55,7 +55,12 @@ public class SecurityConfig {
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .httpBasic(Customizer.withDefaults())
                 .authorizeHttpRequests(auth -> auth
-                        // Endpoints publics de consultation
+                        // Ressources statiques et pages web Thymeleaf publiques
+                        .requestMatchers(HttpMethod.GET, "/", "/films", "/films/**", "/seances/**", "/reserver/**", "/confirmation/**", "/recherche/**", "/admin/tableau-de-bord").permitAll()
+                        .requestMatchers(HttpMethod.POST, "/reserver", "/annuler/**").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/css/**", "/js/**", "/images/**", "/favicon.ico").permitAll()
+
+                        // Endpoints publics de consultation API REST
                         .requestMatchers(HttpMethod.GET, "/api/films", "/api/films/**").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/seances", "/api/seances/**").permitAll()
 

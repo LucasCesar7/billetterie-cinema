@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html lang="fr" xmlns:th="http://www.thymeleaf.org">
+<head th:fragment="entete(titre)">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title th:text="${titre != null ? titre + ' - Grand Écran' : 'Grand Écran - Billetterie Cinéma'}">Grand Écran - Billetterie Cinéma</title>
+    <link rel="stylesheet" th:href="@{/css/style.css}">
+</head>
+<body>
+    <header class="navbar" th:fragment="barre-navigation(ongletActif)">
+        <div class="navbar-conteneur">
+            <a th:href="@{/}" class="logo-cinema">
+                <span class="icone">🎬</span>
+                <span>Grand Écran</span>
+            </a>
+            <nav class="nav-liens">
+                <a th:href="@{/}" class="nav-lien" th:classappend="${ongletActif == 'films'} ? 'actif' : ''">Films &amp; Séances</a>
+                <a th:href="@{/admin/tableau-de-bord}" class="nav-lien nav-lien-admin" th:classappend="${ongletActif == 'admin'} ? 'actif' : ''">Tableau de bord</a>
+                <a th:href="@{/swagger-ui.html}" class="nav-lien" target="_blank" title="Documentation OpenAPI">API</a>
+            </nav>
+        </div>
+    </header>
+
+    <footer class="pied-de-page" th:fragment="pied-page">
+        <p>© 2026 Grand Écran • Billetterie de Cinéma • Propulsé par Java 25 &amp; Spring Boot 4</p>
+    </footer>
+</body>
+</html>
+

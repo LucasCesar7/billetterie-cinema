@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="fr" xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{layout :: entete('Réservation de places')}"></head>
+<body>
+    <header th:replace="~{layout :: barre-navigation('films')}"></header>
+
+    <main class="conteneur" style="max-width: 800px;">
+        <div style="margin-bottom: 1.5rem;">
+            <a th:href="@{/}" style="display: inline-flex; align-items: center; gap: 0.4rem; font-size: 0.9rem; color: var(--texte-secondaire);">
+                <span>←</span>
+                <span>Retour au catalogue des films</span>
+            </a>
+        </div>
+
+        <div th:if="${erreur}" class="alerte alerte-danger">
+            <span>⚠</span>
+            <span th:text="${erreur}">Erreur de réservation</span>
+        </div>
+
+        <section class="carte-detail-seance">
+            <div class="film-entete" style="border-bottom: none; margin-bottom: 0.5rem; padding-bottom: 0;">
+                <h1 class="film-titre" style="font-size: 1.7rem;" th:text="${seance.filmTitre}">Titre du Film</h1>
+                <div class="film-metadonnees">
+                    <span class="badge badge-genre" th:if="${seance.filmGenre}" th:text="${seance.filmGenre}">Genre</span>
+                    <span class="badge badge-duree" th:text="${seance.filmDureeFormatee}">2h 15min</span>
+                </div>
+            </div>
+
+            <div class="detail-grille">
+                <div class="detail-stat">
+                    <div class="detail-label">Date &amp; Horaire</div>
+                    <div class="detail-valeur" style="font-size: 1.05rem;" th:text="${seance.dateFormatee + ' à ' + seance.heureFormatee}">Mercredi 24 octobre à 20h30</div>
+                </div>
+
+                <div class="detail-stat">
+                    <div class="detail-label">Salle &amp; Capacité</div>
+                    <div class="detail-valeur" style="font-size: 1.05rem;" th:text="${seance.nomSalle + ' (' + seance.capaciteSalle + ' places)'}">Salle 1 (100 places)</div>
+                </div>
+
+                <div class="detail-stat">
+                    <div class="detail-label">Prix unitaire</div>
+                    <div class="detail-valeur" style="color: var(--or-cinema);" th:text="${#numbers.formatDecimal(seance.prixUnitaire, 1, 2) + ' €'}">10,50 €</div>
+                </div>
+
+                <div class="detail-stat">
+                    <div class="detail-label">Disponibilité</div>
+                    <div class="detail-valeur" th:classappend="${seance.complete} ? 'dispo-complet' : 'dispo-ok'"
+                         th:text="${seance.complete} ? 'Complet' : ${seance.placesRestantes + ' places restantes'}">
+                        50 places restantes
+                    </div>
+                    <div class="jauge-conteneur">
+                        <div class="jauge-barre">
+                            <div class="jauge-remplissage"
+                                 th:classappend="${seance.pourcentageOccupation >= 90} ? 'rouge' : (${seance.pourcentageOccupation >= 60} ? 'orange' : 'vert')"
+                                 th:style="'width: ' + ${seance.pourcentageOccupation} + '%;'">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section class="form-reservation">
+            <h2 style="font-size: 1.25rem; font-weight: 700; margin-bottom: 1.25rem; color: var(--texte-principal);">
+                Vos coordonnées de réservation
+            </h2>
+
+            <form th:if="${!seance.complete}" th:action="@{/reserver}" method="post">
+                <input type="hidden" name="seanceId" th:value="${seance.id}">
+
+                <div class="form-groupe">
+                    <label for="emailClient" class="form-label">Adresse courriel</label>
+                    <input type="email" id="emailClient" name="emailClient" class="form-input"
+                           th:value="${emailPrecedente}"
+                           placeholder="exemple@domaine.fr" required>
+                    <div class="form-aide">Votre billet numérique et le code de confirmation y seront associés.</div>
+                </div>
+
+                <div class="form-groupe">
+                    <label for="nombrePlaces" class="form-label">Nombre de places souhaité</label>
+                    <input type="number" id="nombrePlaces" name="nombrePlaces" class="form-input"
+                           min="1" th:max="${seance.placesRestantes}"
+                           th:value="${placesPrecedentes != null ? placesPrecedentes : 1}" required>
+                    <div class="form-aide" th:text="'Maximum disponible pour cette commande : ' + ${seance.placesRestantes} + ' place(s).'">
+                        Maximum disponible : 10 place(s).
+                    </div>
+                </div>
+
+                <div class="recap-prix">
+                    <span class="recap-prix-label">Montant total de votre commande :</span>
+                    <span class="recap-prix-montant" id="montantTotalAffiche"
+                          th:text="${#numbers.formatDecimal(seance.prixUnitaire, 1, 2) + ' €'}">10,50 €</span>
+                </div>
+
+                <button type="submit" class="btn btn-or" style="width: 100%; padding: 0.85rem; font-size: 1rem;">
+                    Valider et réserver mes places
+                </button>
+            </form>
+
+            <div th:if="${seance.complete}" style="text-align: center; padding: 2rem 1rem;">
+                <p style="color: var(--danger); font-size: 1.1rem; font-weight: 600; margin-bottom: 1rem;">
+                    Cette séance est complète. Aucune place supplémentaire ne peut être réservée.
+                </p>
+                <a th:href="@{/}" class="btn btn-secondaire">Consulter les autres séances</a>
+            </div>
+        </section>
+    </main>
+
+    <footer th:replace="~{layout :: pied-page}"></footer>
+
+    <script th:inline="javascript">
+        /* Calcul dynamique du montant total */
+        const prixUnitaire = /*[[${seance.prixUnitaire}]]*/ 10.50;
+        const inputPlaces = document.getElementById('nombrePlaces');
+        const affichageMontant = document.getElementById('montantTotalAffiche');
+
+        if (inputPlaces && affichageMontant) {
+            function recalculerMontant() {
+                const quantite = parseInt(inputPlaces.value, 10) || 0;
+                const total = (quantite * prixUnitaire).toFixed(2);
+                affichageMontant.textContent = total.replace('.', ',') + ' €';
+            }
+            inputPlaces.addEventListener('input', recalculerMontant);
+            recalculerMontant();
+        }
+    </script>
+</body>
+</html>
+
