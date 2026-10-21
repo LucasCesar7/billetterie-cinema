@@ -311,3 +311,4 @@ class ReservationConcurrenceIntegrationTest {
         assertThat(totalPlacesEnBase).isEqualTo(salle.getCapacite());
     }
 }
+

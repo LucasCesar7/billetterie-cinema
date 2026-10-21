@@ -1,32 +1,34 @@
 # Compte Rendu - Backend Billetterie Cinéma (R5.08)
 
 **Auteur :** Lucas César - Étudiant BUT 3 Informatique  
-**Technologies :** Java 25, Spring Boot 4.1.1, MySQL 8, Flyway, Spring Security, Testcontainers  
+**Technologies :** Java 25, Spring Boot 4.1.1, MySQL 8, Flyway, Spring Security, Testcontainers, Micrometer  
 **Outils IA :** Gemini 3.8 Flash (raisonnement élevé) + Argon via l'agent Antigravity (VS Code)
 
 ---
 
 ## 1. Stack technique et configuration de l'environnement
 
-- **Java 25 :** Utilisation du compilateur avec le flag `release 25`. Aucun processeur d'annotation tiers (pas de Lombok) pour garantir une compatibilité totale sans plugin expérimental.
-- **Spring Boot 4.1.1 :** Déclaré comme parent unique dans le `pom.xml`. Les versions des starters officiels ne sont pas redéclarées manuellement pour éviter les conflits de dépendances.
-- **MySQL :** Déployé localement avec Docker Compose (port 3306). Aucun recours à H2 afin de tester dès le départ les contraintes SQL réelles et les verrous de concurrence.
-- **Migrations Flyway :** Validation stricte (`ddl-auto: validate`) pour s'assurer que le code Java s'aligne sur le schéma SQL versionné et non l'inverse.
+- **Java 25 :** Utilisation du compilateur natif avec le flag `release 25`. Aucun processeur d'annotation tiers (aucun recours à Lombok) garantissant une compilation directe sans options `--add-opens` expérimentales.
+- **Spring Boot 4.1.1 :** Déclaré comme parent unique dans le `pom.xml`. Gestion centralisée des dépendances officielles sans redéclaration manuelle de versions superflues.
+- **MySQL 8.4 :** Déployé localement avec Docker Compose (port 3306) et instancié dynamiquement lors des tests d'intégration via Testcontainers. Aucun recours à H2 afin de tester dès le départ les contraintes d'intégrité réelles (contraintes CHECK) et les verrous de concurrence InnoDB.
+- **Migrations Flyway :** Schéma versionné strictement (`V1`, `V2`) validé au démarrage de l'application via `spring.jpa.hibernate.ddl-auto: validate`.
+- **Micrometer & Actuator :** Intégration de compteurs métier pour le suivi en temps réel des flux de réservation sans dépendance externe lourde.
 
 ---
 
 ## 2. Démarche et pilotage de l'agent IA
 
-Le développement est réalisé via l'agent Antigravity sous VS Code piloté par Gemini 3.8 Flash. Pour éviter les dérives de code et les hallucinations :
-- Un fichier `.agentrules` fixe les règles strictes (code 100 % en français, records Java 25, zéro H2).
-- Le projet avance par phases séquentielles vérifiées par `mvnw` avant chaque commit autonome.
-- La conception des prompts et des contrats d'API est cadrée en amont.
+Le projet a été développé en binôme avec l'agent autonome Antigravity sous VS Code, piloté par le modèle Gemini 3.8 Flash. Pour prévenir les dérives d'implémentation et les hallucinations classiques :
+- Un fichier de règles strictes ([`.agentrules`](.agentrules)) a fixé le cadre dès l'initialisation (nommage 100 % en français, records Java 25, zéro Lombok, zéro H2).
+- Le travail a progressé par phases séquentielles autonomes, chacune validée par Maven (`mvnw`) avant tout commit.
+- Un fichier de mémoire persistante ([`MEMOIRE.md`](MEMOIRE.md)) a consigné l'état d'avancement et les décisions d'architecture à chaque étape pour garantir une absence totale de régression.
 
 ### 2.1. Journal des prompts structurants :
 - **Prompt Phase 1 (Initialisation) :** Initialisation autonome du socle Maven (Java 25, Spring Boot 4.1.1, wrapper 3.3.4), configuration du fichier `docker-compose.yml` (MySQL 8.4 avec healthcheck), fichier `application.yml` avec validation stricte Hibernate et exposition Actuator minimale, arborescence Maven standard, classe principale et validation de la compilation par `mvnw clean compile`.
 - **Prompt Phase 2 (Persistance & Schéma) :** Configuration du remote GitHub officiel (`LucasCesar7/billetterie-cinema`), migrations Flyway V1 (schéma DDL complet avec contraintes CHECK et clés étrangères) et V2 (jeux de données de test), entités JPA sans Lombok, repositories Spring Data (avec `findByIdWithLock` et calcul des places réservées), tests d'intégration Testcontainers MySQL et validation du schéma sous `ddl-auto: validate`.
 - **Prompt Phase 3 (API REST, DTOs, Gestion d'erreurs, Sécurité & Recette) :** Création du fichier de mémoire persistante `MEMOIRE.md`, DTOs immuables en records Java 25 natifs avec validation Jakarta, exceptions métier et `@RestControllerAdvice` centralisé (`ErreurResponse` sans fuite de stack trace ni détails SQL), services métier transactionnels avec verrouillage pessimiste, sécurité stateless HTTP Basic avec hachage BCrypt et 3 rôles (`CLIENT`, `PROGRAMMATEUR`, `ADMIN`), contrôleurs REST conformes aux spécifications HTTP, tests d'intégration complets couvrant les recettes A3, A4, A5, A6, A7 et A9 sous Testcontainers MySQL 8.4.
 - **Prompt Phase 4 (Invariant de capacité, concurrence & Recette A8) :** Audit de la gestion transactionnelle, renforcement de l'isolation par verrou pessimiste InnoDB (`SELECT ... FOR UPDATE`), dimensionnement du pool HikariCP, conception du test multi-threadé `ReservationConcurrenceIntegrationTest` avec Testcontainers MySQL 8.4 validant le scénario nominal de concurrence (5 places restantes, 2 x 4 places demandées -> 1 succès 201, 1 refus 409) et le test de stress concurrentiel (10 places restantes, 10 x 2 places demandées -> 5 succès 201, 5 refus 409, 0 surréservation).
+- **Prompt Phase 5 (Exploitation, OpenAPI, Bonus Micrometer & README) :** Configuration d'OpenAPI 3.1 (`OpenApiConfig`) avec schéma de sécurité HTTP Basic, exposition publique contrôlée d'Actuator (`/health`) et Swagger UI, implémentation des compteurs métier Micrometer (`billetterie.places.reservees`, `billetterie.places.refusees`), rédaction du `README.md` complet, suite de tests d'exploitation (`ExploitationIntegrationTest`), vérification du build complet (`clean verify`) et packaging de l'archive JAR exécutable.
 
 ### 2.2. Stratégie d'isolation et gestion de la concurrence
 
@@ -41,7 +43,7 @@ Le développement est réalisé via l'agent Antigravity sous VS Code piloté par
 
 ---
 
-## 3. Phase 1 : Initialisation du socle technique
+## 3. Phase 1 : Initialisation du socle technique (Recette A1)
 
 - **Dépôt Git & Wrapper :** Dépôt Git initialisé sur la branche principale `main` avec `.gitignore` complet (exclusion de `target/`, fichiers d'IDE `.idea/`, `.vscode/`, `.env`). Mise en place du Maven Wrapper exécutable sous Windows et Linux (`mvnw`, `mvnw.cmd`, `.mvn/wrapper/maven-wrapper.properties`).
 - **Configuration Maven & Java 25 :** Déclaration du parent `spring-boot-starter-parent` en version `4.1.1`, ciblage du compilateur sur la release 25 (`<maven.compiler.release>25</maven.compiler.release>` et `<java.version>25</java.version>`). Détection automatique du JDK 25 configuré sur la machine.
@@ -56,7 +58,7 @@ Le développement est réalisé via l'agent Antigravity sous VS Code piloté par
 
 ---
 
-## 4. Phase 2 : Modèle relationnel, persistance JPA et intégrité des données
+## 4. Phase 2 : Modèle relationnel, persistance JPA et intégrité des données (Recette A2)
 
 ### 4.1. Architecture et choix de conception
 
@@ -84,7 +86,7 @@ Le développement est réalisé via l'agent Antigravity sous VS Code piloté par
 
 ---
 
-## 5. Phase 3 : Conception de l'API REST, Sécurité et Validation de la Recette
+## 5. Phase 3 : Conception de l'API REST, Sécurité et Validation de la Recette (Recettes A3, A4, A5, A6, A7, A9)
 
 ### 5.1. Choix d'architecture et découplage par DTOs
 - **Immuabilité et Records Java 25 :** Tous les objets de transfert de données (DTOs d'entrée et de sortie) sont modélisés sous forme de `record` Java 25. Cela garantit une immuabilité structurelle, supprime le besoin de boilerplate (getters, constructeurs, `equals`, `hashCode`, `toString`) sans faire appel à un processeur tiers comme Lombok.
@@ -118,18 +120,50 @@ Le développement est réalisé via l'agent Antigravity sous VS Code piloté par
 - **Atomicité de la réservation :** Dans `ReservationService.creerReservation`, la pose du verrou `PESSIMISTIC_WRITE` sur la séance garantit qu'aucune autre transaction ne peut réserver simultanément sur la même séance.
 - **Révocation immédiate sans écriture partielle :** Si la somme des places réservées cumulée à la nouvelle demande excède la capacité de la salle, l'exception `CapaciteInsuffisanteException` est levée. L'annotation `@Transactional` déclenche un `ROLLBACK` intégral : aucune ligne orpheline n'est insérée dans la table `reservation`.
 
-### 6.2. Matrice globale des recettes de validation (Tests d'intégration)
+---
 
-L'ensemble des tests s'exécute sur des conteneurs MySQL 8.4 réels via Testcontainers. Les recettes fonctionnelles et techniques imposées par le cahier des charges sont intégralement validées :
+## 7. Phase 5 : Exploitation, Documentation OpenAPI, Bonus Micrometer & Recette A10
 
-| Recette | Description | Scénario de test | Statut |
-| :--- | :--- | :--- | :--- |
-| **A3** | Consultation publique des films | Requête anonyme `GET /api/films` renvoyant 200 avec la liste des films. | **Validé** |
-| **A4** | Rejet d'une requête invalide | Requête avec un film de durée invalide (30 min < 40) renvoyant 400 et code `VALIDATION_ECHOUEE`. | **Validé** |
-| **A5** | Contrôle d'accès et authentification | Création d'une salle sans auth (401), avec compte `client` (403), et avec compte `admin` (201). | **Validé** |
-| **A6** | Réservation nominale | Réservation de 4 places par un client authentifié (201 avec code unique et montant total exact). | **Validé** |
-| **A7** | Refus de surréservation (conflit de capacité) | Tentative de dépassement de la capacité restante de la salle renvoyant 409 et code `CAPACITE_INSUFFISANTE`. | **Validé** |
-| **A8** | **Concurrence & Invariant de capacité (multi-thread)** | **1. Scénario nominal (5 places restantes, 2 requêtes simultanées de 4 places) : exactement 1 succès (201), 1 rejet (409 `CAPACITE_INSUFFISANTE`), total en base = 19/20 (jamais 23).<br>2. Test de stress (10 places restantes, 10 requêtes simultanées de 2 places) : exactement 5 succès (201), 5 rejets (409 `CAPACITE_INSUFFISANTE`), total final = 20/20 (100 % plein, 0 surréservation).** | **Validé** |
-| **A9** | Annulation et libération de capacité | Annulation d'une réservation confirmée (204), libération des places et succès d'une nouvelle réservation. | **Validé** |
+### 7.1. Documentation Swagger UI & OpenAPI 3.1
+- La configuration dans `OpenApiConfig` déclare l'API Billetterie Cinéma avec ses métadonnées techniques et un composant de sécurité `SecurityScheme` HTTP Basic (`AuthentificationBasic`).
+- L'interface Swagger UI permet aux développeurs et testeurs de s'authentifier directement avec les comptes `client`, `programmateur` ou `admin` pour tester l'ensemble des endpoints.
 
-**Bilan d'exécution :** 9 tests exécutés avec succès (`.\mvnw.cmd clean verify`), 0 échec, 0 erreur (`BUILD SUCCESS`).
+### 7.2. Bonus Métier : Métriques Micrometer
+- Deux compteurs applicatifs ont été branchés directement dans `ReservationService` via `MeterRegistry` :
+  - `billetterie.places.reservees` : incrémenté lors d'une réservation confirmée (HTTP 201).
+  - `billetterie.places.refusees` : incrémenté du nombre de places rejetées lors d'un dépassement de capacité (HTTP 409).
+- Ces métriques permettent aux exploitants d'observer la tension sur les séances en temps réel sans impacter les performances de la base de données.
+
+---
+
+## 8. Matrice Complète des Recettes de Validation (A1 à A10)
+
+L'intégralité des recettes du sujet est validée par des tests automatisés exécutés sur conteneurs officiels MySQL 8.4 via Testcontainers :
+
+| Recette | Description | Scénario de test / Preuve technique | Classe de test associée | Statut |
+| :--- | :--- | :--- | :--- | :--- |
+| **A1** | **Compilation & Démarrage Maven** | Compilation sans warning sous Java 25 natif, packaging JAR exécutable autonome (`clean compile`, `clean package`). | Maven Wrapper / Root | **Validé** |
+| **A2** | **Schéma relationnel & Migrations Flyway** | Validation stricte `ddl-auto: validate` sur MySQL 8.4 avec scripts `V1` (schéma, CHECK, FK) et `V2` (données initiales). | `SchemaValidationTest` | **Validé** |
+| **A3** | **Consultation publique des films** | Requête anonyme `GET /api/films` renvoyant HTTP 200 avec la liste des films au catalogue. | `BilletterieIntegrationTest` | **Validé** |
+| **A4** | **Validation des entrées & Erreur 400** | Requête `POST /api/films` avec un film de durée invalide (< 40 min) renvoyant HTTP 400 et code `VALIDATION_ECHOUEE`. | `BilletterieIntegrationTest` | **Validé** |
+| **A5** | **Contrôle d'accès & Sécurité HTTP Basic** | `POST /api/salles` : anonyme rejeté (401), rôle `CLIENT` refusé (403), rôle `ADMIN` accepté (201). | `BilletterieIntegrationTest` | **Validé** |
+| **A6** | **Réservation nominale** | Réservation de 4 places par un client authentifié (HTTP 201, code unique `RES-XXXXXXXXXX`, montant exact). | `BilletterieIntegrationTest` | **Validé** |
+| **A7** | **Refus de surréservation** | Tentative de dépassement de la capacité restante de la salle renvoyant HTTP 409 et code `CAPACITE_INSUFFISANTE`. | `BilletterieIntegrationTest` | **Validé** |
+| **A8** | **Concurrence & Invariant multi-thread** | 1. 5 places restantes, 2 requêtes simultanées de 4 places : exactement 1 succès (201) et 1 refus (409), total 19/20 (jamais 23).<br>2. Stress test : 10 places restantes, 10 requêtes de 2 places : 5 succès (201) et 5 refus (409), total 20/20 (0 surréservation). | `ReservationConcurrenceIntegrationTest` | **Validé** |
+| **A9** | **Annulation & Libération de capacité** | Annulation d'une réservation (HTTP 204), statut passant à `ANNULEE` et libération immédiate des places pour une nouvelle réservation. | `BilletterieIntegrationTest` | **Validé** |
+| **A10** | **Exploitation & Documentation publique** | 1. `GET /actuator/health` public renvoyant `{"status":"UP"}`.<br>2. `GET /v3/api-docs` public avec spécification OpenAPI.<br>3. `GET /swagger-ui.html` public (200 / 302).<br>4. Incrémentation vérifiée des compteurs Micrometer (`places.reservees` et `places.refusees`). | `ExploitationIntegrationTest` | **Validé** |
+
+**Bilan d'exécution final :** 13 tests d'intégration exécutés avec succès (`.\mvnw.cmd clean verify`), 0 échec, 0 erreur (`BUILD SUCCESS`).
+
+---
+
+## 9. Retour d'Expérience sur la Collaboration avec l'IA
+
+### Ce qui a fonctionné efficacement :
+1. **Le cadrage strict par `.agentrules` :** Définir en amont les interdits absolus (pas de Lombok, code 100 % en français, zéro H2) a totalement supprimé les hallucinations courantes où l'IA propose par défaut du code anglais ou des dépendances comme H2.
+2. **La mémoire persistante (`MEMOIRE.md`) :** En consignant l'état du système et les décisions techniques à chaque fin de phase, l'agent n'a jamais régressé sur les choix d'architecture antérieurs (ex. conservation systématique du verrou pessimiste et des DTOs en records).
+3. **Le découpage par phases et les tests de recette :** L'approche "une phase = une branche Git = des tests Testcontainers = un commit" a permis de valider le comportement réel sous MySQL 8.4 au fur et à mesure, rendant les phases finales très sereines.
+
+### Pièges évités :
+1. **La modularité de Spring Boot 4 :** Dans Spring Boot 4, certaines dépendances et annotations de test ont été restructurées (ex. `AutoConfigureMockMvc` déplacé dans `spring-boot-starter-webmvc-test`, ou `TestRestTemplate` nécessitant `RestTemplateBuilder`). Grâce aux tests d'intégration immédiats, l'utilisation du client HTTP natif Java 25 (`java.net.http.HttpClient`) a permis de s'affranchir de toute dépendance fragile tout en exploitant pleinement les capacités modernes du JDK 25.
+2. **Le verrouillage sous concurrence :** L'IA aurait pu être tentée d'utiliser une synchronisation Java en mémoire (`synchronized`). Le cadrage a imposé la délégation de la concurrence à InnoDB via `SELECT ... FOR UPDATE`, garantissant l'intégrité même en contexte distribué.

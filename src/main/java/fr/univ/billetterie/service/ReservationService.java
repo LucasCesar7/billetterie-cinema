@@ -9,6 +9,8 @@ import fr.univ.billetterie.exception.CapaciteInsuffisanteException;
 import fr.univ.billetterie.exception.RessourceIntrouvableException;
 import fr.univ.billetterie.repository.ReservationRepository;
 import fr.univ.billetterie.repository.SeanceRepository;
+import io.micrometer.core.instrument.Counter;
+import io.micrometer.core.instrument.MeterRegistry;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.UUID;
@@ -20,13 +22,22 @@ public class ReservationService {
 
     private final ReservationRepository reservationRepository;
     private final SeanceRepository seanceRepository;
+    private final Counter compteurPlacesReservees;
+    private final Counter compteurPlacesRefusees;
 
     public ReservationService(
             ReservationRepository reservationRepository,
-            SeanceRepository seanceRepository
+            SeanceRepository seanceRepository,
+            MeterRegistry meterRegistry
     ) {
         this.reservationRepository = reservationRepository;
         this.seanceRepository = seanceRepository;
+        this.compteurPlacesReservees = Counter.builder("billetterie.places.reservees")
+                .description("Nombre total de places confirmées lors des réservations")
+                .register(meterRegistry);
+        this.compteurPlacesRefusees = Counter.builder("billetterie.places.refusees")
+                .description("Nombre total de places refusées pour cause de capacité insuffisante")
+                .register(meterRegistry);
     }
 
     @Transactional
@@ -41,6 +52,7 @@ public class ReservationService {
         int placesRestantes = seance.getSalle().getCapacite() - placesReservees;
 
         if (requete.nombrePlaces() > placesRestantes) {
+            compteurPlacesRefusees.increment(requete.nombrePlaces());
             throw new CapaciteInsuffisanteException(
                     "CAPACITE_INSUFFISANTE",
                     "Il ne reste que " + placesRestantes + " places pour cette séance"
@@ -60,6 +72,7 @@ public class ReservationService {
         );
 
         Reservation reservationEnregistree = reservationRepository.save(reservation);
+        compteurPlacesReservees.increment(requete.nombrePlaces());
 
         return new ReservationResponse(
                 reservationEnregistree.getCode(),
@@ -83,4 +96,3 @@ public class ReservationService {
         reservationRepository.save(reservation);
     }
 }
-

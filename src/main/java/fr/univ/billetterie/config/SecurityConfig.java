@@ -60,8 +60,8 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.GET, "/api/seances", "/api/seances/**").permitAll()
 
                         // Documentation Swagger / OpenAPI et Actuator Health publics
-                        .requestMatchers(HttpMethod.GET, "/actuator/health").permitAll()
-                        .requestMatchers(HttpMethod.GET, "/v3/api-docs/**", "/swagger-ui/**", "/swagger-ui.html").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/actuator/health", "/actuator/health/**").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/v3/api-docs", "/v3/api-docs/**", "/swagger-ui/**", "/swagger-ui.html").permitAll()
 
                         // Opérations de programmation (Programmateur ou Admin)
                         .requestMatchers(HttpMethod.POST, "/api/programmation/**").hasAnyRole("PROGRAMMATEUR", "ADMIN")
@@ -82,4 +82,3 @@ public class SecurityConfig {
         return http.build();
     }
 }
-
