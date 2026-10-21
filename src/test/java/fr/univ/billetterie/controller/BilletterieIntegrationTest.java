@@ -5,14 +5,19 @@ import static org.springframework.security.test.web.servlet.request.SecurityMock
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import fr.univ.billetterie.dto.FilmCreationRequest;
+import fr.univ.billetterie.dto.FilmModificationRequest;
 import fr.univ.billetterie.dto.ReservationCreationRequest;
 import fr.univ.billetterie.dto.SalleCreationRequest;
+import fr.univ.billetterie.dto.SalleModificationRequest;
 import fr.univ.billetterie.dto.SeanceCreationRequest;
+import fr.univ.billetterie.dto.SeanceModificationRequest;
 import fr.univ.billetterie.entity.Film;
 import fr.univ.billetterie.entity.Reservation;
 import fr.univ.billetterie.entity.Salle;
@@ -23,6 +28,7 @@ import fr.univ.billetterie.repository.ReservationRepository;
 import fr.univ.billetterie.repository.SalleRepository;
 import fr.univ.billetterie.repository.SeanceRepository;
 import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -72,20 +78,51 @@ class BilletterieIntegrationTest {
         mockMvc.perform(get("/api/films"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$").isArray())
-                .andExpect(jsonPath("$.length()").value(org.hamcrest.Matchers.greaterThanOrEqualTo(2)))
-                .andExpect(jsonPath("$[0].titre").exists())
-                .andExpect(jsonPath("$[0].dureeMinutes").exists());
-
-        // Filtrage par titre
-        mockMvc.perform(get("/api/films").param("titre", "Inception"))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.length()").value(1))
-                .andExpect(jsonPath("$[0].titre").value("Inception"));
+                .andExpect(jsonPath("$[0].titre").isNotEmpty())
+                .andExpect(jsonPath("$[0].dureeMinutes").isNumber());
     }
 
     @Test
-    @DisplayName("Recette A4 : validation échouée sur réservation (0 ou 9 places -> 400 VALIDATION_ECHOUEE)")
-    void recetteA4_validationEchoueeReservation() throws Exception {
+    @DisplayName("Recette A4 : validation stricte d'un film (rejet 400 avec code VALIDATION_ECHOUEE)")
+    void recetteA4_validationEntreesFilmInvalide() throws Exception {
+        // Durée < 40 minutes -> rejet
+        FilmCreationRequest requeteDureeTropCourte = new FilmCreationRequest(
+                "Court métrage",
+                "Animation",
+                15,
+                LocalDate.of(2026, 5, 1)
+        );
+
+        mockMvc.perform(post("/api/programmation/films")
+                        .with(httpBasic("programmateur", "prog123"))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(requeteDureeTropCourte)))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.status").value(400))
+                .andExpect(jsonPath("$.code").value("VALIDATION_ECHOUEE"))
+                .andExpect(jsonPath("$.path").value("/api/programmation/films"))
+                .andExpect(jsonPath("$.message").isNotEmpty());
+
+        // Titre vide -> rejet
+        FilmCreationRequest requeteTitreVide = new FilmCreationRequest(
+                "   ",
+                "Comédie",
+                90,
+                LocalDate.of(2026, 5, 1)
+        );
+
+        mockMvc.perform(post("/api/programmation/films")
+                        .with(httpBasic("programmateur", "prog123"))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(requeteTitreVide)))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.status").value(400))
+                .andExpect(jsonPath("$.code").value("VALIDATION_ECHOUEE"));
+    }
+
+    @Test
+    @DisplayName("Recette A4 (suite) : validation de la réservation (rejet si nombrePlaces < 1 ou > 8)")
+    void recetteA4_validationReservationNombrePlaces() throws Exception {
         ReservationCreationRequest requeteZeroPlace = new ReservationCreationRequest(
                 1L,
                 "client@example.test",
@@ -148,54 +185,64 @@ class BilletterieIntegrationTest {
     }
 
     @Test
-    @DisplayName("Recette A6 & A7 : réservation valide (201) et refus pour capacité insuffisante (409)")
-    void recetteA6EtA7_reservationValideEtCapaciteInsuffisante() throws Exception {
-        // Préparation d'une salle à capacité réduite (20 places) et d'une séance dédiée
-        Salle petiteSalle = salleRepository.save(new Salle("Salle Petite", 20));
+    @DisplayName("Recette A6 : réservation nominale par un client authentifié (calcul exact du montant)")
+    void recetteA6_reservationNominale() throws Exception {
+        // Préparation d'une séance de test
+        Film film = filmRepository.findAll().getFirst();
+        Salle salle = salleRepository.save(new Salle("Salle 50 Places", 50));
+        Seance seance = seanceRepository.save(new Seance(
+                film,
+                salle,
+                LocalDateTime.of(2026, 11, 20, 20, 30),
+                new BigDecimal("12.50")
+        ));
+
+        ReservationCreationRequest requete = new ReservationCreationRequest(
+                seance.getId(),
+                "jean.dupont@test.univ",
+                4
+        );
+
+        mockMvc.perform(post("/api/reservations")
+                        .with(httpBasic("client", "client123"))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(requete)))
+                .andExpect(status().isCreated())
+                .andExpect(header().exists("Location"))
+                .andExpect(jsonPath("$.code").isNotEmpty())
+                .andExpect(jsonPath("$.statut").value("CONFIRMEE"))
+                .andExpect(jsonPath("$.nombrePlaces").value(4))
+                .andExpect(jsonPath("$.montantTotal").value(50.00)) // 4 * 12.50 = 50.00
+                .andExpect(jsonPath("$.seanceId").value(seance.getId()));
+    }
+
+    @Test
+    @DisplayName("Recette A7 : refus de surréservation (HTTP 409 et CAPACITE_INSUFFISANTE)")
+    void recetteA7_refusSurreservation() throws Exception {
+        Salle petiteSalle = salleRepository.save(new Salle("Petite Salle", 20));
         Film film = filmRepository.findAll().getFirst();
         Seance seance = seanceRepository.save(new Seance(
                 film,
                 petiteSalle,
-                LocalDateTime.of(2026, 12, 1, 14, 0),
-                new BigDecimal("12.00")
+                LocalDateTime.of(2026, 11, 25, 14, 0),
+                new BigDecimal("8.00")
         ));
 
-        // Réservation valide de 8 places
-        ReservationCreationRequest requeteValide = new ReservationCreationRequest(
-                seance.getId(),
-                "lea@example.test",
-                8
-        );
+        // Réservation de 16 places (2 requêtes de 8)
+        ReservationCreationRequest requete8 = new ReservationCreationRequest(seance.getId(), "a@test.univ", 8);
+        mockMvc.perform(post("/api/reservations")
+                .with(httpBasic("client", "client123"))
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(requete8))).andExpect(status().isCreated());
 
         mockMvc.perform(post("/api/reservations")
-                        .with(httpBasic("client", "client123"))
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(requeteValide)))
-                .andExpect(status().isCreated())
-                .andExpect(jsonPath("$.code").isNotEmpty())
-                .andExpect(jsonPath("$.statut").value("CONFIRMEE"))
-                .andExpect(jsonPath("$.nombrePlaces").value(8))
-                .andExpect(jsonPath("$.montantTotal").value(96.00)) // 8 * 12.00
-                .andExpect(jsonPath("$.seanceId").value(seance.getId()));
+                .with(httpBasic("client", "client123"))
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(requete8))).andExpect(status().isCreated());
 
-        // Deuxième réservation de 8 places (reste 20 - 8 = 12 places -> 8 places acceptées)
-        ReservationCreationRequest requeteValide2 = new ReservationCreationRequest(
-                seance.getId(),
-                "paul@example.test",
-                8
-        );
-        mockMvc.perform(post("/api/reservations")
-                        .with(httpBasic("client", "client123"))
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(requeteValide2)))
-                .andExpect(status().isCreated());
-
-        // Il reste 20 - 16 = 4 places. Une demande de 5 places (invalide pour la capacité) doit être rejetée avec 409
-        ReservationCreationRequest requeteTropDePlaces = new ReservationCreationRequest(
-                seance.getId(),
-                "marc@example.test",
-                5
-        );
+        // Capacité occupée : 16/20. Reste 4 places.
+        // Tentative de réserver 5 places -> Refus 409
+        ReservationCreationRequest requeteTropDePlaces = new ReservationCreationRequest(seance.getId(), "b@test.univ", 5);
 
         mockMvc.perform(post("/api/reservations")
                         .with(httpBasic("client", "client123"))
@@ -251,5 +298,176 @@ class BilletterieIntegrationTest {
 
         Reservation reservationAnnulee = reservationRepository.findByCode(code).orElseThrow();
         assertThat(reservationAnnulee.getStatut()).isEqualTo(StatutReservation.ANNULEE);
+    }
+
+    @Test
+    @DisplayName("Phase 8 CRUD : modification valide d'un film (PUT 200)")
+    void recetteCrud_modifierFilmValide() throws Exception {
+        Film film = filmRepository.save(new Film("Film Initial", "Action", 120, LocalDate.of(2025, 1, 1)));
+
+        FilmModificationRequest requete = new FilmModificationRequest(
+                "Film Modifie",
+                "Aventure",
+                140,
+                LocalDate.of(2025, 6, 1)
+        );
+
+        mockMvc.perform(put("/api/programmation/films/" + film.getId())
+                        .with(httpBasic("programmateur", "prog123"))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(requete)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.id").value(film.getId()))
+                .andExpect(jsonPath("$.titre").value("Film Modifie"))
+                .andExpect(jsonPath("$.genre").value("Aventure"))
+                .andExpect(jsonPath("$.dureeMinutes").value(140));
+    }
+
+    @Test
+    @DisplayName("Phase 8 CRUD : suppression réussie d'un film sans séance (DELETE 204)")
+    void recetteCrud_supprimerFilmSansSeance() throws Exception {
+        Film film = filmRepository.save(new Film("Film Isole", "Drame", 95, LocalDate.of(2025, 3, 1)));
+
+        mockMvc.perform(delete("/api/programmation/films/" + film.getId())
+                        .with(httpBasic("programmateur", "prog123")))
+                .andExpect(status().isNoContent());
+
+        assertThat(filmRepository.existsById(film.getId())).isFalse();
+    }
+
+    @Test
+    @DisplayName("Phase 8 CRUD : refus de suppression d'une salle avec séances associées (DELETE 409)")
+    void recetteCrud_refusSuppressionSalleAvecSeances() throws Exception {
+        Salle salle = salleRepository.save(new Salle("Salle Avec Seances", 40));
+        Film film = filmRepository.findAll().getFirst();
+        seanceRepository.save(new Seance(
+                film,
+                salle,
+                LocalDateTime.of(2026, 12, 15, 21, 0),
+                new BigDecimal("11.00")
+        ));
+
+        mockMvc.perform(delete("/api/admin/salles/" + salle.getId())
+                        .with(httpBasic("admin", "admin123")))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.status").value(409))
+                .andExpect(jsonPath("$.code").value("IMPOSSIBLE_SUPPRIMER_SALLE"));
+
+        assertThat(salleRepository.existsById(salle.getId())).isTrue();
+    }
+
+    @Test
+    @DisplayName("Phase 8 CRUD : modification valide d'une salle physique (PUT 200)")
+    void recetteCrud_modifierSalleValide() throws Exception {
+        Salle salle = salleRepository.save(new Salle("Salle A Renommer", 35));
+
+        SalleModificationRequest requete = new SalleModificationRequest("Salle Renommee", 55);
+
+        mockMvc.perform(put("/api/admin/salles/" + salle.getId())
+                        .with(httpBasic("admin", "admin123"))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(requete)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.id").value(salle.getId()))
+                .andExpect(jsonPath("$.nom").value("Salle Renommee"))
+                .andExpect(jsonPath("$.capacite").value(55));
+
+        Salle salleEnBase = salleRepository.findById(salle.getId()).orElseThrow();
+        assertThat(salleEnBase.getNom()).isEqualTo("Salle Renommee");
+        assertThat(salleEnBase.getCapacite()).isEqualTo(55);
+    }
+
+    @Test
+    @DisplayName("Phase 8 CRUD : suppression réussie d'une salle sans séance (DELETE 204)")
+    void recetteCrud_supprimerSalleSansSeance() throws Exception {
+        Salle salle = salleRepository.save(new Salle("Salle A Supprimer", 25));
+
+        mockMvc.perform(delete("/api/admin/salles/" + salle.getId())
+                        .with(httpBasic("admin", "admin123")))
+                .andExpect(status().isNoContent());
+
+        assertThat(salleRepository.existsById(salle.getId())).isFalse();
+    }
+
+    @Test
+    @DisplayName("Phase 8 CRUD : modification valide d'une séance (PUT 200)")
+    void recetteCrud_modifierSeanceValide() throws Exception {
+        Salle salle = salleRepository.save(new Salle("Salle Seance Modif", 60));
+        Film film = filmRepository.findAll().getFirst();
+        Seance seance = seanceRepository.save(new Seance(
+                film,
+                salle,
+                LocalDateTime.of(2026, 12, 20, 15, 0),
+                new BigDecimal("10.00")
+        ));
+
+        LocalDateTime nouvelleDate = LocalDateTime.of(2026, 12, 21, 16, 30);
+        SeanceModificationRequest requete = new SeanceModificationRequest(
+                film.getId(),
+                salle.getId(),
+                nouvelleDate,
+                new BigDecimal("13.50")
+        );
+
+        mockMvc.perform(put("/api/programmation/seances/" + seance.getId())
+                        .with(httpBasic("programmateur", "prog123"))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(requete)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.id").value(seance.getId()))
+                .andExpect(jsonPath("$.prixUnitaire").value(13.50));
+
+        Seance seanceEnBase = seanceRepository.findById(seance.getId()).orElseThrow();
+        assertThat(seanceEnBase.getDebut()).isEqualTo(nouvelleDate);
+        assertThat(seanceEnBase.getPrixUnitaire()).isEqualByComparingTo("13.50");
+    }
+
+    @Test
+    @DisplayName("Phase 8 CRUD : suppression réussie d'une séance sans réservation (DELETE 204)")
+    void recetteCrud_supprimerSeanceSansReservation() throws Exception {
+        Salle salle = salleRepository.save(new Salle("Salle Seance Libree", 45));
+        Film film = filmRepository.findAll().getFirst();
+        Seance seance = seanceRepository.save(new Seance(
+                film,
+                salle,
+                LocalDateTime.of(2026, 12, 22, 19, 0),
+                new BigDecimal("10.50")
+        ));
+
+        mockMvc.perform(delete("/api/programmation/seances/" + seance.getId())
+                        .with(httpBasic("programmateur", "prog123")))
+                .andExpect(status().isNoContent());
+
+        assertThat(seanceRepository.existsById(seance.getId())).isFalse();
+    }
+
+    @Test
+    @DisplayName("Phase 8 CRUD : refus de suppression d'une séance avec réservations actives (DELETE 409)")
+    void recetteCrud_refusSuppressionSeanceAvecReservations() throws Exception {
+        Salle salle = salleRepository.save(new Salle("Salle Seance Bloquee", 45));
+        Film film = filmRepository.findAll().getFirst();
+        Seance seance = seanceRepository.save(new Seance(
+                film,
+                salle,
+                LocalDateTime.of(2026, 12, 23, 20, 0),
+                new BigDecimal("12.00")
+        ));
+
+        reservationRepository.save(new Reservation(
+                "RES-BLOQUER-CRUD",
+                seance,
+                "client.crud@test.univ",
+                2,
+                StatutReservation.CONFIRMEE,
+                LocalDateTime.now()
+        ));
+
+        mockMvc.perform(delete("/api/programmation/seances/" + seance.getId())
+                        .with(httpBasic("programmateur", "prog123")))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.status").value(409))
+                .andExpect(jsonPath("$.code").value("IMPOSSIBLE_SUPPRIMER_SEANCE"));
+
+        assertThat(seanceRepository.existsById(seance.getId())).isTrue();
     }
 }

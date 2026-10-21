@@ -4,7 +4,7 @@
 <body>
     <header th:replace="~{layout :: barre-navigation('salles')}"></header>
 
-    <main class="conteneur" style="max-width: 900px;">
+    <main class="conteneur" style="max-width: 960px;">
         <div th:if="${messageSucces}" class="alerte alerte-succes">
             <span>✓</span>
             <span th:text="${messageSucces}">Opération réussie</span>
@@ -17,7 +17,7 @@
 
         <section class="entete-page">
             <h1>Gestion des Salles Physiques</h1>
-            <p>Déclarez les salles de projection du complexe cinématographique et définissez leur jauge de sécurité.</p>
+            <p>Déclarez les salles de projection du complexe, ajustez leur capacité ou supprimez les salles obsolètes.</p>
         </section>
 
         <!-- Formulaire d'ajout de Salle -->
@@ -57,9 +57,11 @@
                 <table class="table-admin">
                     <thead>
                         <tr>
-                            <th>Identifiant</th>
+                            <th>ID</th>
                             <th>Nom de la salle</th>
-                            <th>Capacité Maximale</th>
+                            <th>Capacité</th>
+                            <th>Séances programmées</th>
+                            <th style="text-align: right;">Actions</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -71,9 +73,28 @@
                                     100 places
                                 </span>
                             </td>
+                            <td>
+                                <span th:text="${salle.nombreSeances + ' séance(s)'}"
+                                      th:style="${salle.nombreSeances > 0} ? 'color: var(--succes);' : 'color: var(--texte-discret);'">
+                                    2 séance(s)
+                                </span>
+                            </td>
+                            <td style="text-align: right;">
+                                <div style="display: inline-flex; gap: 0.5rem;">
+                                    <a th:href="@{'/admin/salles/' + ${salle.id} + '/modifier'}" class="btn btn-sm btn-secondaire">
+                                        ✏️ Modifier
+                                    </a>
+                                    <form th:action="@{'/admin/salles/' + ${salle.id} + '/supprimer'}" method="post" style="display: inline; margin: 0;"
+                                          onsubmit="return confirm('Êtes-vous certain de vouloir supprimer cette salle ?');">
+                                        <button type="submit" class="btn btn-sm btn-danger">
+                                            🗑️
+                                        </button>
+                                    </form>
+                                </div>
+                            </td>
                         </tr>
                         <tr th:if="${#lists.isEmpty(salles)}">
-                            <td colspan="3" style="text-align: center; color: var(--texte-discret); padding: 1.5rem;">
+                            <td colspan="5" style="text-align: center; color: var(--texte-discret); padding: 1.5rem;">
                                 Aucune salle enregistrée.
                             </td>
                         </tr>
@@ -86,4 +107,3 @@
     <footer th:replace="~{layout :: pied-page}"></footer>
 </body>
 </html>
-

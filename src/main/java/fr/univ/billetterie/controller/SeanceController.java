@@ -1,6 +1,7 @@
 package fr.univ.billetterie.controller;
 
 import fr.univ.billetterie.dto.SeanceCreationRequest;
+import fr.univ.billetterie.dto.SeanceModificationRequest;
 import fr.univ.billetterie.dto.SeanceResponse;
 import fr.univ.billetterie.service.SeanceService;
 import jakarta.validation.Valid;
@@ -9,8 +10,11 @@ import java.time.LocalDateTime;
 import java.util.List;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
@@ -43,5 +47,19 @@ public class SeanceController {
                 .toUri();
         return ResponseEntity.created(location).body(reponse);
     }
-}
 
+    @PutMapping("/api/programmation/seances/{id}")
+    public ResponseEntity<SeanceResponse> modifierSeance(
+            @PathVariable Long id,
+            @Valid @RequestBody SeanceModificationRequest requete
+    ) {
+        SeanceResponse reponse = seanceService.modifierSeance(id, requete);
+        return ResponseEntity.ok(reponse);
+    }
+
+    @DeleteMapping("/api/programmation/seances/{id}")
+    public ResponseEntity<Void> supprimerSeance(@PathVariable Long id) {
+        seanceService.supprimerSeance(id);
+        return ResponseEntity.noContent().build();
+    }
+}

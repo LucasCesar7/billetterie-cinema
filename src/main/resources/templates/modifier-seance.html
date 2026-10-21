@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="fr" xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{layout :: entete('Modifier la Séance')}"></head>
+<body>
+    <header th:replace="~{layout :: barre-navigation('programmation')}"></header>
+
+    <main class="conteneur" style="max-width: 600px;">
+        <div style="margin-bottom: 1.5rem;">
+            <a th:href="@{/programmation}" style="display: inline-flex; align-items: center; gap: 0.4rem; font-size: 0.9rem; color: var(--texte-secondaire);">
+                <span>←</span>
+                <span>Retour à la gestion de programmation</span>
+            </a>
+        </div>
+
+        <section class="carte-film" style="padding: 2rem;">
+            <h1 style="font-size: 1.5rem; font-weight: 700; color: var(--texte-principal); margin-bottom: 0.5rem;">
+                Modifier la Séance
+            </h1>
+            <p style="color: var(--texte-secondaire); font-size: 0.9rem; margin-bottom: 1.5rem;">
+                Modifiez l'horaire, la salle ou le tarif de la séance. Attention : la capacité de la nouvelle salle doit être suffisante pour les réservations déjà enregistrées.
+            </p>
+
+            <form th:action="@{'/programmation/seances/' + ${seance.id} + '/modifier'}" method="post">
+                <div class="form-groupe">
+                    <label for="filmId" class="form-label">Film</label>
+                    <select id="filmId" name="filmId" class="form-input" required>
+                        <option th:each="f : ${films}" th:value="${f.id}" th:text="${f.titre + ' (' + f.dureeMinutes + ' min)'}"
+                                th:selected="${f.id == seance.film.id}">
+                            Film
+                        </option>
+                    </select>
+                </div>
+
+                <div class="form-groupe">
+                    <label for="salleId" class="form-label">Salle</label>
+                    <select id="salleId" name="salleId" class="form-input" required>
+                        <option th:each="s : ${salles}" th:value="${s.id}" th:text="${s.nom + ' (' + s.capacite + ' places)'}"
+                                th:selected="${s.id == seance.salle.id}">
+                            Salle
+                        </option>
+                    </select>
+                </div>
+
+                <div class="form-groupe">
+                    <label for="debut" class="form-label">Date et heure de début</label>
+                    <input type="datetime-local" id="debut" name="debut" class="form-input" th:value="${seance.debut}" required>
+                </div>
+
+                <div class="form-groupe">
+                    <label for="prixUnitaire" class="form-label">Prix unitaire (€)</label>
+                    <input type="number" id="prixUnitaire" name="prixUnitaire" class="form-input" step="0.50" min="1.00" max="100.00" th:value="${seance.prixUnitaire}" required>
+                </div>
+
+                <div style="display: flex; gap: 1rem; margin-top: 1.5rem;">
+                    <button type="submit" class="btn btn-or" style="flex: 1;">
+                        Enregistrer les modifications
+                    </button>
+                    <a th:href="@{/programmation}" class="btn btn-secondaire">
+                        Annuler
+                    </a>
+                </div>
+            </form>
+        </section>
+    </main>
+
+    <footer th:replace="~{layout :: pied-page}"></footer>
+</body>
+</html>

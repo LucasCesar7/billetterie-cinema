@@ -126,3 +126,30 @@ Ce document consigne l'état courant du projet, les choix d'architecture validé
   - 11 tests web validés : accès `/connexion` (200), redirection vers `/connexion` pour anonymes sur `/admin/tableau-de-bord`, accès autorisé pour `ADMIN` sur tableau de bord et gestion des salles, accès autorisé pour `PROGRAMMATEUR` sur programmation.
 - **Bilan d'exécution final :**
   - 24 tests d'intégration au vert sur MySQL 8.4 via Testcontainers, 0 échec, 0 erreur (`BUILD SUCCESS`).
+
+
+### Phase 8 (Terminée & Validée) - CRUD Complet (Films, Salles, Séances) & Intégrité Référentielle
+- **DTOs de Modification (`fr.univ.billetterie.dto`) :**
+  - `FilmModificationRequest` (titre non vide, genre, durée >= 40 min, dateSortie passée ou présente).
+  - `SalleModificationRequest` (nom non vide, capacité entre 10 et 1000 places).
+  - `SeanceModificationRequest` (filmId positif, salleId positif, début dans le futur, prixUnitaire positif).
+- **Contrôles d'intégrité et Repositories (`fr.univ.billetterie.repository`) :**
+  - `SalleRepository` : `existsByNomAndIdNot(nom, id)` pour garantir l'unicité du nom en cas de renommage.
+  - `SeanceRepository` : `existsByFilmId(filmId)`, `existsBySalleId(salleId)`, `countByFilmId(filmId)`, `countBySalleId(salleId)`.
+  - `ReservationRepository` : `existsBySeanceId(seanceId)`, `countBySeanceId(seanceId)`.
+- **Services Métier Sécurisés (`fr.univ.billetterie.service`) :**
+  - `FilmService` : `modifierFilm`, `supprimerFilm` (rejet par `ConflitMetierException` code `IMPOSSIBLE_SUPPRIMER_FILM` si séances existantes), `compterSeancesPourFilm`.
+  - `SalleService` : `modifierSalle` (rejet par `ConflitMetierException` si nom déjà utilisé par une autre salle), `supprimerSalle` (rejet par `ConflitMetierException` code `IMPOSSIBLE_SUPPRIMER_SALLE` si séances rattachées), `compterSeancesPourSalle`.
+  - `SeanceService` : `modifierSeance` (rejet si nouvelle capacité insuffisante pour les réservations confirmées existantes), `supprimerSeance` (rejet par `ConflitMetierException` code `IMPOSSIBLE_SUPPRIMER_SEANCE` si réservations existantes), `compterReservationsPourSeance`.
+- **Contrôleurs REST & Sécurité (`fr.univ.billetterie.controller` & `SecurityConfig`) :**
+  - `FilmController` : `PUT /api/programmation/films/{id}` (200), `DELETE /api/programmation/films/{id}` (204).
+  - `SalleController` : `PUT /api/admin/salles/{id}` (200), `DELETE /api/admin/salles/{id}` (204).
+  - `SeanceController` : `PUT /api/programmation/seances/{id}` (200), `DELETE /api/programmation/seances/{id}` (204).
+  - `SecurityConfig` : permissions PUT/DELETE configurées sur `/api/programmation/**` (`PROGRAMMATEUR`, `ADMIN`) et `/api/admin/**` (`ADMIN`).
+- **Interface Web Thymeleaf & Modèles de Vue :**
+  - DTOs d'affichage `SalleLigneVue` et `FilmLigneVue` enrichis du compteur de séances actives.
+  - Formulaires dédiés avec validation et retour visuel : [`modifier-salle.html`](src/main/resources/templates/modifier-salle.html), [`modifier-film.html`](src/main/resources/templates/modifier-film.html), [`modifier-seance.html`](src/main/resources/templates/modifier-seance.html).
+  - Tableaux de gestion enrichis de boutons d'action "Modifier" et "Supprimer" avec modale de confirmation native JavaScript (`confirm(...)`) et alertes flash succès/erreur.
+- **Tests d'Intégration Étendus :**
+  - `BilletterieIntegrationTest` : 8 tests CRUD REST validés (modifications valides, suppressions nominales, rejets 409 pour contrainte de dépendance).
+  - `CinemaWebControllerTest` : 12 nouveaux tests web validés pour les affichages de formulaires, modifications et suppressions avec redirections et messages flash.
