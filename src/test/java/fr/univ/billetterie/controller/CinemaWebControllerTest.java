@@ -28,6 +28,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.testcontainers.service.connection.ServiceConnection;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
+import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
 import org.testcontainers.containers.MySQLContainer;
@@ -98,6 +99,14 @@ class CinemaWebControllerTest {
                 .andExpect(status().isOk())
                 .andExpect(view().name("index"))
                 .andExpect(model().attributeExists("films"));
+    }
+
+    @Test
+    @DisplayName("GET /connexion : affiche la page d'authentification avec statut 200")
+    void afficherPageConnexion_devraitRenvoyerVueConnexion() throws Exception {
+        mockMvc.perform(get("/connexion"))
+                .andExpect(status().isOk())
+                .andExpect(view().name("connexion"));
     }
 
     @Test
@@ -181,12 +190,42 @@ class CinemaWebControllerTest {
     }
 
     @Test
-    @DisplayName("GET /admin/tableau-de-bord : affiche le tableau de bord avec les métriques et séances")
-    void afficherTableauDeBord_devraitRenvoyerVueTableau() throws Exception {
+    @DisplayName("GET /admin/tableau-de-bord : sans authentification, redirige vers la page de connexion")
+    void afficherTableauDeBord_anonyme_devraitRedirigerVersConnexion() throws Exception {
+        MvcResult resultat = mockMvc.perform(get("/admin/tableau-de-bord"))
+                .andExpect(status().is3xxRedirection())
+                .andReturn();
+
+        assertThat(resultat.getResponse().getRedirectedUrl()).endsWith("/connexion");
+    }
+
+    @Test
+    @WithMockUser(username = "admin", roles = {"ADMIN"})
+    @DisplayName("GET /admin/tableau-de-bord : avec rôle ADMIN, affiche le tableau de bord avec statut 200")
+    void afficherTableauDeBord_admin_devraitRenvoyerVueTableau() throws Exception {
         mockMvc.perform(get("/admin/tableau-de-bord"))
                 .andExpect(status().isOk())
                 .andExpect(view().name("tableau-de-bord"))
                 .andExpect(model().attributeExists("tableau"));
     }
-}
 
+    @Test
+    @WithMockUser(username = "programmateur", roles = {"PROGRAMMATEUR"})
+    @DisplayName("GET /programmation : avec rôle PROGRAMMATEUR, affiche la gestion de la programmation")
+    void afficherProgrammation_programmateur_devraitRenvoyerVue() throws Exception {
+        mockMvc.perform(get("/programmation"))
+                .andExpect(status().isOk())
+                .andExpect(view().name("gestion-programmation"))
+                .andExpect(model().attributeExists("films", "salles", "seances"));
+    }
+
+    @Test
+    @WithMockUser(username = "admin", roles = {"ADMIN"})
+    @DisplayName("GET /admin/salles : avec rôle ADMIN, affiche la gestion des salles physiques")
+    void afficherGestionSalles_admin_devraitRenvoyerVue() throws Exception {
+        mockMvc.perform(get("/admin/salles"))
+                .andExpect(status().isOk())
+                .andExpect(view().name("gestion-salles"))
+                .andExpect(model().attributeExists("salles"));
+    }
+}

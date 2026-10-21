@@ -86,9 +86,6 @@ Ce document consigne l'état courant du projet, les choix d'architecture validé
 - **Dépendance Maven & Intégration :**
   - `spring-boot-starter-thymeleaf` ajouté dans `pom.xml` géré par le parent Spring Boot 4.1.1.
   - Propriétés d'encodage `UTF-8` explicites dans `pom.xml`.
-- **Sécurité Web (`SecurityConfig`) :**
-  - Accès public sans authentification configuré pour les routes de consultation et d'action du front-end (`/`, `/films`, `/seances/**`, `/reserver/**`, `/confirmation/**`, `/annuler/**`, `/admin/tableau-de-bord`, `/css/**`, `/js/**`, `/images/**`, `/favicon.ico`).
-  - Préservation stricte et intégrale de la sécurité HTTP Basic sur l'API REST (`/api/...`).
 - **Modèles de Vue Immuables (`fr.univ.billetterie.dto.web`) :**
   - `FilmCatalogueVue`, `SeanceResumeVue`, `SeanceDetailVue`, `BilletConfirmationVue`, `TableauDeBordVue` (records Java natifs, zéro Lombok, prévention absolue des `LazyInitializationException` avec `JOIN FETCH`).
 - **Contrôleur Web (`fr.univ.billetterie.controller.web.CinemaWebController`) :**
@@ -101,8 +98,31 @@ Ce document consigne l'état courant du projet, les choix d'architecture validé
 - **Charte Graphique et Vues HTML5 :**
   - Design cinéma artisanal sobre et moderne (fond `#0b0f17`, cartes `#151d2a`, bordures `#233044`, or `#eab308`, succès `#10b981`, danger `#ef4444`).
   - Templates dans `src/main/resources/templates/` (`layout.html`, `index.html`, `reservation.html`, `confirmation.html`, `tableau-de-bord.html`) et CSS `src/main/resources/static/css/style.css`.
+
+### Phase 7 (Terminée & Validée) - Authentification Web (Form Login), Session et Écrans de Gestion
+- **Dépendance Thymeleaf Security :**
+  - Ajout de `org.thymeleaf.extras:thymeleaf-extras-springsecurity6` dans `pom.xml`.
+- **Architecture Double SecurityFilterChain (`SecurityConfig.java`) :**
+  - `@Order(1) apiSecurityFilterChain` :
+    * Filtre exclusivement `/api/**` via `.securityMatcher("/api/**")`.
+    * Sans état (`SessionCreationPolicy.STATELESS`), CSRF désactivé, HTTP Basic activé.
+    * Point d'entrée d'authentification `HttpStatusEntryPoint(HttpStatus.UNAUTHORIZED)` garantissant un strict code HTTP 401 (aucun redirect 302).
+  - `@Order(2) webSecurityFilterChain` :
+    * Filtre l'ensemble des routes web (`/**`).
+    * Form Login configuré sur `/connexion` avec redirection `/` au succès et `/connexion?erreur=true` à l'échec.
+    * Logout configuré sur `/deconnexion` avec redirection `/connexion?deconnexion=true`.
+    * Protection par rôles : `/admin/**` réservé à `ADMIN`, `/programmation/**` réservé à `PROGRAMMATEUR` et `ADMIN`.
+    * Redirection automatique 302 vers `/connexion` pour tout utilisateur non authentifié tentant d'accéder aux sections d'administration.
+- **Interface de Connexion & Test Rapide 1-Clic (`connexion.html`) :**
+  - Formulaire de connexion épuré avec messages d'état contextualisés (erreur d'identifiants, notification de déconnexion).
+  - 3 boutons de connexion instantanée pré-remplissant et validant automatiquement les identifiants pour les profils `Client`, `Programmateur` et `Admin`.
+- **En-Tête Dynamique et Gestion de Session (`layout.html`) :**
+  - Intégration du dialecte `sec:authorize` et `sec:authentication`.
+  - Affichage conditionnel des liens "Tableau de bord" et "Gestion Salles" (`ADMIN`), "Programmation" (`PROGRAMMATEUR` ou `ADMIN`), badge de session utilisateur avec rôle et bouton de déconnexion.
+- **Écrans de Gestion Web :**
+  - `GET /programmation` & `POST /programmation/films` & `POST /programmation/seances` ([`gestion-programmation.html`](src/main/resources/templates/gestion-programmation.html)).
+  - `GET /admin/salles` & `POST /admin/salles` ([`gestion-salles.html`](src/main/resources/templates/gestion-salles.html)).
 - **Validation Automatisée (`CinemaWebControllerTest`) :**
-  - 7 tests web validés (affichage catalogue, affichage réservation, réservation nominale 3xx avec redirection, refus surréservation 200 avec alerte, affichage billet, annulation 3xx avec libération, tableau de bord admin).
+  - 11 tests web validés : accès `/connexion` (200), redirection vers `/connexion` pour anonymes sur `/admin/tableau-de-bord`, accès autorisé pour `ADMIN` sur tableau de bord et gestion des salles, accès autorisé pour `PROGRAMMATEUR` sur programmation.
 - **Bilan d'exécution final :**
-  - 20 tests d'intégration au vert sur MySQL 8.4 via Testcontainers, 0 échec, 0 erreur (`BUILD SUCCESS`).
-  - JAR autonome `billetterie-cinema-0.0.1-SNAPSHOT.jar` repackagé avec succès.
+  - 24 tests d'intégration au vert sur MySQL 8.4 via Testcontainers, 0 échec, 0 erreur (`BUILD SUCCESS`).

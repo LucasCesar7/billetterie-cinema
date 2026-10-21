@@ -11,14 +11,16 @@ Ce projet implémente le système complet de billetterie d'un cinéma :
 - **Modèle relationnel strict :** Intégrité référentielle en base MySQL, validation Flyway et Hibernate `ddl-auto: validate`.
 - **Architecture en couches étanches :** Séparation nette entre contrôleurs, services transactionnels et persistance.
 - **Java 25 natif & Zéro Lombok :** Exploitation intégrale des `record` immuables pour tous les DTOs et modèles de vue.
-- **Sécurité HTTP Basic sans état (stateless) :** Mots de passe chiffrés BCrypt et contrôle d'accès par rôles (`CLIENT`, `PROGRAMMATEUR`, `ADMIN`).
+- **Double SecurityFilterChain :**
+  - Chaîne API REST stateless (`/api/**`) avec HTTP Basic (rejet 401 strict sans redirection).
+  - Chaîne Web UI (`/**`) avec Form Login, gestion de sessions, boutons de test 1-clic et redirections 302.
 - **Verrouillage pessimiste InnoDB (`PESSIMISTIC_WRITE`) :** Ordonnancement séquentiel via `SELECT ... FOR UPDATE` pour empêcher toute surréservation sans mécanisme de retry côté client.
 - **Interface Web Artisanale (Thymeleaf) :** Vues HTML5 responsives, sobres et contrastées au thème cinéma ardoise et or.
 
 ### Méthodologie de développement assisté par IA
 Le développement a été réalisé en binôme avec l'agent autonome Antigravity (piloté par Gemini 3.8 Flash) sous VS Code, selon un cadre d'ingénierie rigoureux :
 - **Cadrage humain préalable :** Rédaction d'un fichier de règles strictes ([`.agentrules`](.agentrules)) imposant du code 100 % en français, zéro processeur d'annotations tiers (zéro Lombok), l'exclusion totale de bases simulées comme H2, et l'usage exclusif de conteneurs MySQL 8.4 via Testcontainers.
-- **Découpage modulaire par phases :** Progression incrémentale par branches Git dédiées (Phase 1 à Phase 6).
+- **Découpage modulaire par phases :** Progression incrémentale par branches Git dédiées (Phases 1 à 7).
 - **Zéro régression :** Chaque phase a fait l'objet d'une compilation du bytecode, d'une exécution de tests automatisés sous conteneurs réels et d'une consignation dans un journal persistant ([`MEMOIRE.md`](MEMOIRE.md)).
 
 ---
@@ -31,7 +33,11 @@ L'application intègre un front-end complet développé avec le moteur de templa
 - **Catalogue des films & séances :** Accessible sur `http://localhost:8080/` ou `http://localhost:8080/films`. Affiche les affiches, genres, durées formatées, salles, horaires, prix et disponibilités en direct.
 - **Formulaire de réservation interactif :** Accessible depuis chaque séance via `http://localhost:8080/seances/{id}/reserver`. Intègre une jauge d'occupation en temps réel et un calcul instantané du montant total en JavaScript natif. En cas de surréservation, la vue est réaffichée immédiatement avec une alerte rouge explicite.
 - **Billet numérique stylisé :** Accessible sur `http://localhost:8080/confirmation/{code}`. Billet format ticket de cinéma avec récapitulatif complet, code officiel unique (`RES-XXXXXXXXXX`), bouton d'impression directe (`window.print()`) et formulaire d'annulation sécurisé.
-- **Tableau de bord d'exploitation :** Accessible sur `http://localhost:8080/admin/tableau-de-bord`. Supervision en temps réel des jauges de remplissage par séance et des métriques métier Micrometer.
+- **Page de connexion & boutons 1-clic :** Accessible sur `http://localhost:8080/connexion`. Permet de se connecter classiquement ou d'utiliser les 3 boutons de test rapide pour basculer instantanément entre les rôles `Client`, `Programmateur` et `Admin`.
+- **Écrans d'administration & programmation :**
+  - `http://localhost:8080/programmation` : ajout de films au catalogue et planification de séances dans les salles.
+  - `http://localhost:8080/admin/salles` : déclaration de nouvelles salles de cinéma avec contrôle de capacité.
+  - `http://localhost:8080/admin/tableau-de-bord` : supervision en direct des jauges d'occupation et des métriques Micrometer.
 
 ---
 
@@ -65,7 +71,7 @@ docker compose down
 Le projet intègre le wrapper Maven (`mvnw` / `mvnw.cmd`), garantissant une reproductibilité exacte du build sans installation locale de Maven.
 
 ### Exécution de la suite de tests et vérification globale
-Lance l'ensemble des 20 tests d'intégration (schéma, contrôleurs REST, sécurité, concurrence multi-threadée, exploitation et contrôleur web Thymeleaf) sous conteneurs MySQL 8.4 réels :
+Lance l'ensemble des 24 tests d'intégration (schéma, contrôleurs REST, sécurité, concurrence multi-threadée, exploitation et contrôleur web Thymeleaf avec sécurité des sessions) sous conteneurs MySQL 8.4 réels :
 
 Sous Windows (PowerShell / CMD) :
 ```powershell
@@ -86,29 +92,37 @@ L'application démarre par défaut sur le port HTTP `8080`.
 
 ---
 
-## 6. Comptes de Démonstration (Authentification HTTP Basic)
+## 6. Comptes de Démonstration (Authentification)
 
-L'API REST utilise une authentification HTTP Basic sans état avec mots de passe hachés via BCrypt :
+L'application gère trois comptes utilisateurs avec mots de passe hachés via BCrypt :
 
-| Identifiant | Mot de passe | Rôle Spring Security | Périmètre d'action |
+| Identifiant | Mot de passe | Rôle Spring Security | Périmètre d'action Web & REST |
 | :--- | :--- | :--- | :--- |
-| `client` | `client123` | `ROLE_CLIENT` | Effectuer une réservation (`POST /api/reservations`), annuler sa réservation (`DELETE /api/reservations/{code}`). |
-| `programmateur` | `prog123` | `ROLE_PROGRAMMATEUR` | Créer un film (`POST /api/films`), programmer une séance (`POST /api/seances`). |
-| `admin` | `admin123` | `ROLE_ADMIN` | Créer une salle (`POST /api/salles`), accès complet à l'ensemble des endpoints. |
+| `client` | `client123` | `ROLE_CLIENT` | Effectuer une réservation, annuler son billet. |
+| `programmateur` | `prog123` | `ROLE_PROGRAMMATEUR` | Créer un film, planifier une séance (`/programmation`). |
+| `admin` | `admin123` | `ROLE_ADMIN` | Créer une salle (`/admin/salles`), tableau de bord superviseur (`/admin/tableau-de-bord`), accès complet. |
 
 ---
 
 ## 7. Tableau Récapitulatif des Endpoints
 
-### 7.1. Interface Web Thymeleaf (HTML5 / Navigation publique)
-| Méthode | URL | Rôle fonctionnel |
-| :--- | :--- | :--- |
-| `GET` | `/` ou `/films` | Catalogue public des films et séances programmées |
-| `GET` | `/seances/{id}/reserver` | Page de réservation d'une séance avec jauge et calcul live |
-| `POST` | `/reserver` | Soumission du formulaire de réservation (redirection ou erreur) |
-| `GET` | `/confirmation/{code}` | Vue du billet numérique et option d'annulation |
-| `POST` | `/annuler/{code}` | Annulation de la réservation et libération des places |
-| `GET` | `/admin/tableau-de-bord` | Tableau de bord administrateur (jauges et métriques) |
+### 7.1. Interface Web Thymeleaf (HTML5 / Navigation navigateur)
+| Méthode | URL | Accès / Rôle | Rôle fonctionnel |
+| :--- | :--- | :--- | :--- |
+| `GET` | `/` ou `/films` | Public (Anonyme) | Catalogue public des films et séances programmées |
+| `GET` | `/connexion` | Public (Anonyme) | Formulaire d'authentification et boutons de test rapide 1-clic |
+| `POST` | `/connexion` | Public (Anonyme) | Traitement de la connexion utilisateur Spring Security |
+| `POST` | `/deconnexion` | Authentifié | Déconnexion et invalidation de session |
+| `GET` | `/seances/{id}/reserver` | Public (Anonyme) | Page de réservation d'une séance avec jauge et calcul live |
+| `POST` | `/reserver` | Public (Anonyme) | Soumission du formulaire de réservation (redirection ou erreur) |
+| `GET` | `/confirmation/{code}` | Public (Anonyme) | Vue du billet numérique et option d'annulation |
+| `POST` | `/annuler/{code}` | Public (Anonyme) | Annulation de la réservation et libération des places |
+| `GET` | `/programmation` | `PROGRAMMATEUR`, `ADMIN` | Interface d'ajout de films et planification de séances |
+| `POST` | `/programmation/films` | `PROGRAMMATEUR`, `ADMIN` | Formulaire d'enregistrement d'un nouveau film |
+| `POST` | `/programmation/seances` | `PROGRAMMATEUR`, `ADMIN` | Formulaire de planification d'une nouvelle séance |
+| `GET` | `/admin/salles` | `ADMIN` | Interface de déclaration et gestion des salles physiques |
+| `POST` | `/admin/salles` | `ADMIN` | Formulaire d'ajout d'une nouvelle salle physique |
+| `GET` | `/admin/tableau-de-bord` | `ADMIN` | Tableau de bord de supervision (jauges et métriques Micrometer) |
 
 ### 7.2. API REST (Consommation programmatique)
 | Méthode | URL | Accès / Rôle | Rôle fonctionnel | Codes HTTP attendus |

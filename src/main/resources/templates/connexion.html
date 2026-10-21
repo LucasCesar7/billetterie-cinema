@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="fr" xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{layout :: entete('Connexion')}"></head>
+<body>
+    <header th:replace="~{layout :: barre-navigation('connexion')}"></header>
+
+    <main class="conteneur" style="max-width: 520px;">
+        <div th:if="${messageSucces}" class="alerte alerte-succes">
+            <span>✓</span>
+            <span th:text="${messageSucces}">Opération réussie</span>
+        </div>
+
+        <div th:if="${messageErreur}" class="alerte alerte-danger">
+            <span>⚠</span>
+            <span th:text="${messageErreur}">Identifiants invalides</span>
+        </div>
+
+        <section class="carte-film" style="padding: 2rem;">
+            <div style="text-align: center; margin-bottom: 1.75rem;">
+                <h1 style="font-size: 1.6rem; font-weight: 700; color: var(--texte-principal); margin-bottom: 0.35rem;">
+                    Espace Authentification
+                </h1>
+                <p style="color: var(--texte-secondaire); font-size: 0.9rem;">
+                    Accédez aux modules de gestion de billetterie et programmation.
+                </p>
+            </div>
+
+            <form id="formulaireConnexion" th:action="@{/connexion}" method="post">
+                <div class="form-groupe">
+                    <label for="username" class="form-label">Nom d'utilisateur</label>
+                    <input type="text" id="username" name="username" class="form-input" placeholder="ex: admin" required autofocus>
+                </div>
+
+                <div class="form-groupe">
+                    <label for="password" class="form-label">Mot de passe</label>
+                    <input type="password" id="password" name="password" class="form-input" placeholder="••••••••" required>
+                </div>
+
+                <button type="submit" class="btn btn-or" style="width: 100%; padding: 0.8rem; font-size: 0.95rem; margin-top: 0.5rem;">
+                    Se connecter
+                </button>
+            </form>
+
+            <div style="margin-top: 2rem; padding-top: 1.5rem; border-top: 1px solid var(--bordure);">
+                <div style="font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.06em; color: var(--or-cinema); font-weight: 700; margin-bottom: 0.85rem; text-align: center;">
+                    ⚡ Connexion Rapide de Test (1 clic)
+                </div>
+
+                <div style="display: flex; flex-direction: column; gap: 0.65rem;">
+                    <button type="button" class="btn btn-secondaire" style="justify-content: flex-start; padding: 0.65rem 1rem;"
+                            onclick="connexionRapide('client', 'client123')">
+                        <span style="font-size: 1.1rem; margin-right: 0.4rem;">👤</span>
+                        <div style="text-align: left;">
+                            <div style="font-weight: 600; font-size: 0.88rem; color: var(--texte-principal);">Tester en tant que Client</div>
+                            <div style="font-size: 0.75rem; color: var(--texte-discret);">Identifiant : client / client123</div>
+                        </div>
+                    </button>
+
+                    <button type="button" class="btn btn-secondaire" style="justify-content: flex-start; padding: 0.65rem 1rem;"
+                            onclick="connexionRapide('programmateur', 'prog123')">
+                        <span style="font-size: 1.1rem; margin-right: 0.4rem;">🎬</span>
+                        <div style="text-align: left;">
+                            <div style="font-weight: 600; font-size: 0.88rem; color: var(--texte-principal);">Tester en tant que Programmateur</div>
+                            <div style="font-size: 0.75rem; color: var(--texte-discret);">Identifiant : programmateur / prog123</div>
+                        </div>
+                    </button>
+
+                    <button type="button" class="btn btn-secondaire" style="justify-content: flex-start; padding: 0.65rem 1rem;"
+                            onclick="connexionRapide('admin', 'admin123')">
+                        <span style="font-size: 1.1rem; margin-right: 0.4rem;">🛡️</span>
+                        <div style="text-align: left;">
+                            <div style="font-weight: 600; font-size: 0.88rem; color: var(--texte-principal);">Tester en tant qu'Administrateur</div>
+                            <div style="font-size: 0.75rem; color: var(--texte-discret);">Identifiant : admin / admin123</div>
+                        </div>
+                    </button>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <footer th:replace="~{layout :: pied-page}"></footer>
+
+    <script>
+        function connexionRapide(utilisateur, motDePasse) {
+            document.getElementById('username').value = utilisateur;
+            document.getElementById('password').value = motDePasse;
+            document.getElementById('formulaireConnexion').submit();
+        }
+    </script>
+</body>
+</html>
+

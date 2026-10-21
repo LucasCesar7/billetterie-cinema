@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="fr" xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{layout :: entete('Programmation')}"></head>
+<body>
+    <header th:replace="~{layout :: barre-navigation('programmation')}"></header>
+
+    <main class="conteneur">
+        <div th:if="${messageSucces}" class="alerte alerte-succes">
+            <span>✓</span>
+            <span th:text="${messageSucces}">Opération réussie</span>
+        </div>
+
+        <div th:if="${messageErreur}" class="alerte alerte-danger">
+            <span>⚠</span>
+            <span th:text="${messageErreur}">Une erreur est survenue</span>
+        </div>
+
+        <section class="entete-page">
+            <h1>Gestion de la Programmation</h1>
+            <p>Ajoutez de nouveaux films au catalogue et planifiez les séances dans les salles physiques.</p>
+        </section>
+
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(380px, 1fr)); gap: 2rem; margin-bottom: 2.5rem;">
+            <!-- Formulaire 1 : Ajouter un Film -->
+            <article class="carte-film" style="padding: 1.75rem;">
+                <h2 style="font-size: 1.25rem; font-weight: 700; color: var(--or-cinema); margin-bottom: 1.25rem;">
+                    🎬 Ajouter un Nouveau Film
+                </h2>
+
+                <form th:action="@{/programmation/films}" method="post">
+                    <div class="form-groupe">
+                        <label for="titre" class="form-label">Titre du film</label>
+                        <input type="text" id="titre" name="titre" class="form-input" placeholder="ex: Oppenheimer" required>
+                    </div>
+
+                    <div class="form-groupe">
+                        <label for="genre" class="form-label">Genre</label>
+                        <input type="text" id="genre" name="genre" class="form-input" placeholder="ex: Drame historique">
+                    </div>
+
+                    <div class="form-groupe">
+                        <label for="dureeMinutes" class="form-label">Durée (en minutes)</label>
+                        <input type="number" id="dureeMinutes" name="dureeMinutes" class="form-input" min="40" max="300" placeholder="180" required>
+                        <div class="form-aide">Comprise entre 40 et 300 minutes.</div>
+                    </div>
+
+                    <div class="form-groupe">
+                        <label for="dateSortie" class="form-label">Date de sortie nationale</label>
+                        <input type="date" id="dateSortie" name="dateSortie" class="form-input">
+                    </div>
+
+                    <button type="submit" class="btn btn-or" style="width: 100%; margin-top: 0.5rem;">
+                        Enregistrer le film
+                    </button>
+                </form>
+            </article>
+
+            <!-- Formulaire 2 : Planifier une Séance -->
+            <article class="carte-film" style="padding: 1.75rem;">
+                <h2 style="font-size: 1.25rem; font-weight: 700; color: var(--or-cinema); margin-bottom: 1.25rem;">
+                    📅 Planifier une Séance
+                </h2>
+
+                <form th:action="@{/programmation/seances}" method="post">
+                    <div class="form-groupe">
+                        <label for="filmId" class="form-label">Sélectionner le film</label>
+                        <select id="filmId" name="filmId" class="form-input" required>
+                            <option value="" disabled selected>-- Choisissez un film --</option>
+                            <option th:each="f : ${films}" th:value="${f.id}" th:text="${f.titre + ' (' + f.dureeMinutes + ' min)'}">
+                                Film
+                            </option>
+                        </select>
+                    </div>
+
+                    <div class="form-groupe">
+                        <label for="salleId" class="form-label">Sélectionner la salle</label>
+                        <select id="salleId" name="salleId" class="form-input" required>
+                            <option value="" disabled selected>-- Choisissez une salle --</option>
+                            <option th:each="s : ${salles}" th:value="${s.id}" th:text="${s.nom + ' (' + s.capacite + ' places)'}">
+                                Salle
+                            </option>
+                        </select>
+                    </div>
+
+                    <div class="form-groupe">
+                        <label for="debut" class="form-label">Date et heure de début</label>
+                        <input type="datetime-local" id="debut" name="debut" class="form-input" required>
+                    </div>
+
+                    <div class="form-groupe">
+                        <label for="prixUnitaire" class="form-label">Prix unitaire (€)</label>
+                        <input type="number" id="prixUnitaire" name="prixUnitaire" class="form-input" step="0.50" min="1.00" max="100.00" value="11.50" required>
+                    </div>
+
+                    <button type="submit" class="btn btn-or" style="width: 100%; margin-top: 0.5rem;">
+                        Créer la séance
+                    </button>
+                </form>
+            </article>
+        </div>
+
+        <!-- Liste des Séances programmées -->
+        <section>
+            <h2 style="font-size: 1.25rem; font-weight: 700; margin-bottom: 1rem; color: var(--texte-principal);">
+                Séances Actuellement Ouvertes
+            </h2>
+
+            <div class="table-conteneur">
+                <table class="table-admin">
+                    <thead>
+                        <tr>
+                            <th>Film</th>
+                            <th>Salle</th>
+                            <th>Date &amp; Heure</th>
+                            <th>Prix</th>
+                            <th>Places Restantes</th>
+                            <th>Action</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr th:each="seance : ${seances}">
+                            <td style="font-weight: 600; color: var(--texte-principal);" th:text="${seance.filmTitre}">Film</td>
+                            <td th:text="${seance.nomSalle}">Salle 1</td>
+                            <td th:text="${seance.dateFormatee + ' - ' + seance.heureFormatee}">24 oct. - 20h30</td>
+                            <td style="color: var(--or-cinema); font-weight: 600;" th:text="${#numbers.formatDecimal(seance.prixUnitaire, 1, 2) + ' €'}">10,50 €</td>
+                            <td th:text="${seance.placesRestantes + ' / ' + seance.capaciteSalle}">85 / 100</td>
+                            <td>
+                                <a th:href="@{'/seances/' + ${seance.id} + '/reserver'}" class="btn btn-sm btn-secondaire">
+                                    Voir page réservation
+                                </a>
+                            </td>
+                        </tr>
+                        <tr th:if="${#lists.isEmpty(seances)}">
+                            <td colspan="6" style="text-align: center; color: var(--texte-discret); padding: 1.5rem;">
+                                Aucune séance enregistrée pour le moment.
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </section>
+    </main>
+
+    <footer th:replace="~{layout :: pied-page}"></footer>
+</body>
+</html>
+

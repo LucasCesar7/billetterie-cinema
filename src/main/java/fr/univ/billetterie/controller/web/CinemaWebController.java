@@ -1,7 +1,10 @@
 package fr.univ.billetterie.controller.web;
 
+import fr.univ.billetterie.dto.FilmCreationRequest;
 import fr.univ.billetterie.dto.ReservationCreationRequest;
 import fr.univ.billetterie.dto.ReservationResponse;
+import fr.univ.billetterie.dto.SalleCreationRequest;
+import fr.univ.billetterie.dto.SeanceCreationRequest;
 import fr.univ.billetterie.dto.web.BilletConfirmationVue;
 import fr.univ.billetterie.dto.web.FilmCatalogueVue;
 import fr.univ.billetterie.dto.web.SeanceDetailVue;
@@ -9,19 +12,24 @@ import fr.univ.billetterie.dto.web.SeanceResumeVue;
 import fr.univ.billetterie.dto.web.TableauDeBordVue;
 import fr.univ.billetterie.entity.Film;
 import fr.univ.billetterie.entity.Reservation;
+import fr.univ.billetterie.entity.Salle;
 import fr.univ.billetterie.entity.Seance;
 import fr.univ.billetterie.entity.StatutReservation;
 import fr.univ.billetterie.exception.CapaciteInsuffisanteException;
 import fr.univ.billetterie.service.FilmService;
 import fr.univ.billetterie.service.ReservationService;
+import fr.univ.billetterie.service.SalleService;
 import fr.univ.billetterie.service.SeanceService;
 import io.micrometer.core.instrument.Counter;
 import io.micrometer.core.instrument.MeterRegistry;
 import java.math.BigDecimal;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
+import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -35,20 +43,22 @@ public class CinemaWebController {
 
     private static final DateTimeFormatter FORMAT_DATE = DateTimeFormatter.ofPattern("EEEE d MMMM yyyy", Locale.FRENCH);
     private static final DateTimeFormatter FORMAT_HEURE = DateTimeFormatter.ofPattern("HH'h'mm", Locale.FRENCH);
-    private static final DateTimeFormatter FORMAT_DATE_HEURE = DateTimeFormatter.ofPattern("dd/MM/yyyy à HH'h'mm", Locale.FRENCH);
 
     private final FilmService filmService;
+    private final SalleService salleService;
     private final SeanceService seanceService;
     private final ReservationService reservationService;
     private final MeterRegistry meterRegistry;
 
     public CinemaWebController(
             FilmService filmService,
+            SalleService salleService,
             SeanceService seanceService,
             ReservationService reservationService,
             MeterRegistry meterRegistry
     ) {
         this.filmService = filmService;
+        this.salleService = salleService;
         this.seanceService = seanceService;
         this.reservationService = reservationService;
         this.meterRegistry = meterRegistry;
@@ -80,6 +90,21 @@ public class CinemaWebController {
 
         model.addAttribute("films", vuesFilms);
         return "index";
+    }
+
+    @GetMapping("/connexion")
+    public String afficherPageConnexion(
+            @RequestParam(value = "erreur", required = false) String erreur,
+            @RequestParam(value = "deconnexion", required = false) String deconnexion,
+            Model model
+    ) {
+        if (erreur != null) {
+            model.addAttribute("messageErreur", "Identifiants invalides. Veuillez vérifier votre nom d'utilisateur et mot de passe.");
+        }
+        if (deconnexion != null) {
+            model.addAttribute("messageSucces", "Vous avez été déconnecté avec succès.");
+        }
+        return "connexion";
     }
 
     @GetMapping("/seances/{id}/reserver")
@@ -194,6 +219,75 @@ public class CinemaWebController {
         return "tableau-de-bord";
     }
 
+    @GetMapping("/programmation")
+    public String afficherPageProgrammation(Model model) {
+        model.addAttribute("films", filmService.listerTousLesFilms());
+        model.addAttribute("salles", salleService.listerToutesLesSalles());
+        model.addAttribute("seances", seanceService.listerToutesLesSeances().stream()
+                .map(this::construireSeanceResume)
+                .toList());
+        return "gestion-programmation";
+    }
+
+    @PostMapping("/programmation/films")
+    public String creerFilmWeb(
+            @RequestParam("titre") String titre,
+            @RequestParam(value = "genre", required = false) String genre,
+            @RequestParam("dureeMinutes") Integer dureeMinutes,
+            @RequestParam(value = "dateSortie", required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate dateSortie,
+            RedirectAttributes redirectAttributes
+    ) {
+        try {
+            LocalDate dateEffective = dateSortie != null ? dateSortie : LocalDate.now();
+            FilmCreationRequest requete = new FilmCreationRequest(titre, genre, dureeMinutes, dateEffective);
+            filmService.creerFilm(requete);
+            redirectAttributes.addFlashAttribute("messageSucces", "Le film '" + titre + "' a été ajouté avec succès au catalogue.");
+        } catch (Exception exception) {
+            redirectAttributes.addFlashAttribute("messageErreur", "Erreur lors de la création du film : " + exception.getMessage());
+        }
+        return "redirect:/programmation";
+    }
+
+    @PostMapping("/programmation/seances")
+    public String creerSeanceWeb(
+            @RequestParam("filmId") Long filmId,
+            @RequestParam("salleId") Long salleId,
+            @RequestParam("debut") @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime debut,
+            @RequestParam("prixUnitaire") BigDecimal prixUnitaire,
+            RedirectAttributes redirectAttributes
+    ) {
+        try {
+            SeanceCreationRequest requete = new SeanceCreationRequest(filmId, salleId, debut, prixUnitaire);
+            seanceService.creerSeance(requete);
+            redirectAttributes.addFlashAttribute("messageSucces", "La séance a été planifiée avec succès.");
+        } catch (Exception exception) {
+            redirectAttributes.addFlashAttribute("messageErreur", "Erreur lors de la planification : " + exception.getMessage());
+        }
+        return "redirect:/programmation";
+    }
+
+    @GetMapping("/admin/salles")
+    public String afficherGestionSalles(Model model) {
+        model.addAttribute("salles", salleService.listerToutesLesSalles());
+        return "gestion-salles";
+    }
+
+    @PostMapping("/admin/salles")
+    public String creerSalleWeb(
+            @RequestParam("nom") String nom,
+            @RequestParam("capacite") Integer capacite,
+            RedirectAttributes redirectAttributes
+    ) {
+        try {
+            SalleCreationRequest requete = new SalleCreationRequest(nom, capacite);
+            salleService.creerSalle(requete);
+            redirectAttributes.addFlashAttribute("messageSucces", "La salle '" + nom + "' (" + capacite + " places) a été créée avec succès.");
+        } catch (Exception exception) {
+            redirectAttributes.addFlashAttribute("messageErreur", "Impossible de créer la salle : " + exception.getMessage());
+        }
+        return "redirect:/admin/salles";
+    }
+
     private SeanceResumeVue construireSeanceResume(Seance seance) {
         int capacite = seance.getSalle().getCapacite();
         int reservees = reservationService.compterPlacesReservees(seance.getId());
@@ -273,4 +367,3 @@ public class CinemaWebController {
         return texte.substring(0, 1).toUpperCase(Locale.FRENCH) + texte.substring(1);
     }
 }
-

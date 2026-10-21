@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="fr" xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{layout :: entete('Gestion des Salles')}"></head>
+<body>
+    <header th:replace="~{layout :: barre-navigation('salles')}"></header>
+
+    <main class="conteneur" style="max-width: 900px;">
+        <div th:if="${messageSucces}" class="alerte alerte-succes">
+            <span>✓</span>
+            <span th:text="${messageSucces}">Opération réussie</span>
+        </div>
+
+        <div th:if="${messageErreur}" class="alerte alerte-danger">
+            <span>⚠</span>
+            <span th:text="${messageErreur}">Une erreur est survenue</span>
+        </div>
+
+        <section class="entete-page">
+            <h1>Gestion des Salles Physiques</h1>
+            <p>Déclarez les salles de projection du complexe cinématographique et définissez leur jauge de sécurité.</p>
+        </section>
+
+        <!-- Formulaire d'ajout de Salle -->
+        <article class="carte-film" style="padding: 1.75rem; margin-bottom: 2.5rem;">
+            <h2 style="font-size: 1.25rem; font-weight: 700; color: var(--or-cinema); margin-bottom: 1.25rem;">
+                🏛️ Déclarer une Nouvelle Salle
+            </h2>
+
+            <form th:action="@{/admin/salles}" method="post">
+                <div style="display: grid; grid-template-columns: 2fr 1fr; gap: 1.25rem;">
+                    <div class="form-groupe">
+                        <label for="nom" class="form-label">Nom de la salle</label>
+                        <input type="text" id="nom" name="nom" class="form-input" placeholder="ex: Salle 3 - Dolby Atmos" required>
+                        <div class="form-aide">Le nom doit être unique au sein du complexe.</div>
+                    </div>
+
+                    <div class="form-groupe">
+                        <label for="capacite" class="form-label">Capacité (places)</label>
+                        <input type="number" id="capacite" name="capacite" class="form-input" min="20" max="500" value="80" required>
+                        <div class="form-aide">Min. 20, max. 500.</div>
+                    </div>
+                </div>
+
+                <button type="submit" class="btn btn-or" style="margin-top: 0.5rem;">
+                    Ajouter cette salle
+                </button>
+            </form>
+        </article>
+
+        <!-- Liste des Salles physiques existantes -->
+        <section>
+            <h2 style="font-size: 1.25rem; font-weight: 700; margin-bottom: 1rem; color: var(--texte-principal);">
+                Salles Enregistrées
+            </h2>
+
+            <div class="table-conteneur">
+                <table class="table-admin">
+                    <thead>
+                        <tr>
+                            <th>Identifiant</th>
+                            <th>Nom de la salle</th>
+                            <th>Capacité Maximale</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr th:each="salle : ${salles}">
+                            <td style="color: var(--texte-discret);" th:text="'#' + ${salle.id}">#1</td>
+                            <td style="font-weight: 600; color: var(--texte-principal);" th:text="${salle.nom}">Salle 1</td>
+                            <td>
+                                <span class="badge badge-duree" th:text="${salle.capacite + ' places'}">
+                                    100 places
+                                </span>
+                            </td>
+                        </tr>
+                        <tr th:if="${#lists.isEmpty(salles)}">
+                            <td colspan="3" style="text-align: center; color: var(--texte-discret); padding: 1.5rem;">
+                                Aucune salle enregistrée.
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </section>
+    </main>
+
+    <footer th:replace="~{layout :: pied-page}"></footer>
+</body>
+</html>
+

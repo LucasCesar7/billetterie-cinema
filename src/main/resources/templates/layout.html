@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="fr" xmlns:th="http://www.thymeleaf.org">
+<html lang="fr" xmlns:th="http://www.thymeleaf.org" xmlns:sec="http://www.thymeleaf.org/extras/spring-security">
 <head th:fragment="entete(titre)">
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -15,8 +15,38 @@
             </a>
             <nav class="nav-liens">
                 <a th:href="@{/}" class="nav-lien" th:classappend="${ongletActif == 'films'} ? 'actif' : ''">Films &amp; Séances</a>
-                <a th:href="@{/admin/tableau-de-bord}" class="nav-lien nav-lien-admin" th:classappend="${ongletActif == 'admin'} ? 'actif' : ''">Tableau de bord</a>
+                
+                <span sec:authorize="hasRole('ADMIN')">
+                    <a th:href="@{/admin/tableau-de-bord}" class="nav-lien nav-lien-admin" th:classappend="${ongletActif == 'admin'} ? 'actif' : ''">Tableau de bord</a>
+                </span>
+                <span sec:authorize="hasRole('ADMIN')">
+                    <a th:href="@{/admin/salles}" class="nav-lien" th:classappend="${ongletActif == 'salles'} ? 'actif' : ''">Gestion Salles</a>
+                </span>
+                <span sec:authorize="hasAnyRole('PROGRAMMATEUR', 'ADMIN')">
+                    <a th:href="@{/programmation}" class="nav-lien" th:classappend="${ongletActif == 'programmation'} ? 'actif' : ''">Programmation</a>
+                </span>
+
                 <a th:href="@{/swagger-ui.html}" class="nav-lien" target="_blank" title="Documentation OpenAPI">API</a>
+
+                <!-- Espace Utilisateur / Connexion -->
+                <div sec:authorize="isAnonymous()" style="margin-left: 0.5rem;">
+                    <a th:href="@{/connexion}" class="btn btn-sm btn-or">Connexion</a>
+                </div>
+
+                <div sec:authorize="isAuthenticated()" style="display: flex; align-items: center; gap: 0.75rem; margin-left: 0.5rem;">
+                    <span class="badge badge-duree" style="font-size: 0.8rem; padding: 0.25rem 0.6rem;">
+                        <span sec:authorize="hasRole('ADMIN')">👑 ADMIN : </span>
+                        <span sec:authorize="hasRole('PROGRAMMATEUR') and !hasRole('ADMIN')">🎬 PROG : </span>
+                        <span sec:authorize="hasRole('CLIENT') and !hasRole('ADMIN') and !hasRole('PROGRAMMATEUR')">👤 CLIENT : </span>
+                        <strong sec:authentication="name">Utilisateur</strong>
+                    </span>
+
+                    <form th:action="@{/deconnexion}" method="post" style="display: inline; margin: 0;">
+                        <button type="submit" class="btn btn-sm btn-secondaire" style="padding: 0.25rem 0.65rem; font-size: 0.8rem;">
+                            Déconnexion
+                        </button>
+                    </form>
+                </div>
             </nav>
         </div>
     </header>
@@ -26,4 +56,3 @@
     </footer>
 </body>
 </html>
-

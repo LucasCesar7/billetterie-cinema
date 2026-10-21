@@ -23,7 +23,7 @@ Le développement a été réalisé de manière autonome et assistée par l'inte
 
 ## 2. Démarche Méthodologique et Cycle de Développement
 
-Le projet s'est articulé autour de 6 phases méthodologiques strictement cloisonnées :
+Le projet s'est articulé autour de 7 phases méthodologiques strictement cloisonnées :
 
 1. **Phase 1 : Socle technique, Git & Maven Wrapper** : Initialisation du projet sous Java 25, configuration de `pom.xml` sans duplication de versions, initialisation de Git, configuration de l'arborescence et mise en place du wrapper Maven (`mvnw` / `mvnw.cmd`).
 2. **Phase 2 : Schéma relationnel, Migrations Flyway et Entités JPA** : Configuration du dépôt distant GitHub, mise en place des migrations `V1__creation_schema.sql` et `V2__donnees_demonstration.sql`, entités JPA et validation sous Testcontainers avec `ddl-auto: validate`.
@@ -31,6 +31,7 @@ Le projet s'est articulé autour de 6 phases méthodologiques strictement cloiso
 4. **Phase 4 : Concurrence, Verrouillage pessimiste et Recette A8** : Implémentation du verrou exclusif `SELECT ... FOR UPDATE` via `PESSIMISTIC_WRITE` sur les séances, séquence transactionnelle atomique, stress-test multi-threadé sous Testcontainers validant l'absence totale de surréservation.
 5. **Phase 5 : Exploitation, Documentation OpenAPI, Bonus Micrometer & README** : Exposition de la documentation OpenAPI 3.1 et de Swagger UI, sonde Actuator Health publique, compteurs métier Micrometer (`places.reservees`, `places.refusees`) et rédaction du manuel technique.
 6. **Phase 6 : Front-End Thymeleaf et Interface Utilisateur Artisanale** : Intégration de `spring-boot-starter-thymeleaf`, création de modèles de vue immuables (`record`), développement du contrôleur web `CinemaWebController`, vues HTML5 ergonomiques au thème cinéma sobre (ardoise sombre et or cinéma) et suite de tests web automatisés.
+7. **Phase 7 : Authentification Web (Form Login), Sessions & Écrans de Gestion** : Architecture double `SecurityFilterChain` (`apiSecurityFilterChain` stateless avec HTTP Basic et 401 strict ; `webSecurityFilterChain` avec Form Login, sessions et redirections 302), boutons de test rapide 1-clic pour tous les rôles, et formulaires web d'administration et de programmation.
 
 ---
 
@@ -66,36 +67,25 @@ Pour éliminer le risque de surréservation lors de requêtes concurrentes :
 
 ---
 
-## 5. Phase 6 : Front-End Thymeleaf et Interface Utilisateur Artisanale
+## 5. Architecture de Sécurité : Double SecurityFilterChain
 
-### 5.1. Philosophie ergonomique et charte graphique
-L'interface utilisateur a été conçue sur mesure pour offrir une expérience soignée, fluide et sobre :
-- **Thème sombre cinéma artisanal :** Palette de couleurs contrastée et reposante (fond principal ardoise très sombre `#0b0f17`, conteneurs de cartes `#151d2a`, bordures discrètes `#233044`, touches dorées cinéma `#eab308`, vert succès `#10b981`, rouge alerte `#ef4444`). Rejet catégorique des templates d'IA aux dégradés violets criards et cartes encombrées.
-- **Typographie système réactive :** Emploi des polices système modernes garantissant un chargement instantané sans requête réseau externe vers Google Fonts.
+Afin de combiner harmonieusement une API REST consommée de façon programmatique et une application web interactive avec interface utilisateur dans le navigateur :
 
-### 5.2. Parcours utilisateur et écrans développés
-1. **Catalogue des films (`GET /` ou `GET /films`) :** Présentation claire des films à l'affiche avec leurs métadonnées (genre, durée formatée en heures et minutes), liste des séances associées, tarif, salle, disponibilité en direct et bouton de réservation immédiat.
-2. **Réservation interactive (`GET /seances/{id}/reserver` et `POST /reserver`) :**
-   - Récapitulatif détaillé de la séance avec jauge visuelle de remplissage aux couleurs dynamiques (vert < 60 %, orange 60-90 %, rouge >= 90 %).
-   - Formulaire épuré demandant l'email et le nombre de places.
-   - Calcul dynamique instantané du montant total via un script JavaScript natif (vanilla JS de 10 lignes sans framework externe).
-   - En cas de surréservation, réaffichage de la vue avec une alerte rouge explicite ("Capacité insuffisante : il ne reste que X place(s) disponible(s)") tout en conservant les saisies de l'utilisateur.
-3. **Billet numérique stylisé (`GET /confirmation/{code}`) :**
-   - Carte billet soignée inspirée des tickets de cinéma avec bordures pointillées et badge officiel `RES-XXXXXXXXXX`.
-   - Bouton d'impression directe (`window.print()`).
-   - Bouton d'annulation de commande avec confirmation de sécurité.
-4. **Annulation en un clic (`POST /annuler/{code}`) :**
-   - Libération instantanée des places en base de données avec bascule du statut vers `ANNULEE`.
-   - Redirection vers l'accueil avec notification de succès.
-5. **Tableau de bord d'exploitation (`GET /admin/tableau-de-bord`) :**
-   - Visualisation temps réel des compteurs Micrometer (`places.reservees`, `places.refusees`), du nombre total de films et de séances.
-   - Tableau de supervision de l'ensemble des séances avec taux de remplissage, jauges colorées et statut d'ouverture.
+1. **Chaîne API REST (`@Order(1)`) :**
+   - Cible exclusivement `/api/**` (`.securityMatcher("/api/**")`).
+   - Mode sans état strict (`SessionCreationPolicy.STATELESS`), CSRF désactivé, authentification HTTP Basic activée.
+   - En cas d'appel non authentifié, le point d'entrée renvoie un strict code `401 Unauthorized` (sans aucune redirection 302 vers une page de login).
+2. **Chaîne Web UI (`@Order(2)`) :**
+   - Cible l'ensemble des routes web (`/**`).
+   - Active le Form Login (`/connexion`) et la déconnexion (`/deconnexion`).
+   - Redirige automatiquement tout visiteur non authentifié (302) vers `/connexion` lors d'une tentative d'accès aux routes protégées (`/admin/**`, `/programmation/**`).
+   - Intègre les tags de sécurité Thymeleaf (`sec:authorize`) pour adapter dynamiquement la barre de navigation selon le profil connecté.
 
 ---
 
-## 6. Matrice Complète des Recettes de Validation (A1 à A10 + Suite Web)
+## 6. Matrice Complète des Recettes de Validation (A1 à A10 + Suites Web & Auth)
 
-Toutes les recettes du cahier des charges ainsi que l'interface utilisateur web ont été validées par des tests automatisés exécutés sur conteneur officiel MySQL 8.4 via Testcontainers :
+Toutes les recettes du cahier des charges ainsi que l'interface utilisateur web et la sécurité ont été validées par des tests automatisés exécutés sur conteneur officiel MySQL 8.4 via Testcontainers :
 
 | Recette / Domaine | Description | Scénario de test / Preuve technique | Classe de test associée | Statut |
 | :--- | :--- | :--- | :--- | :--- |
@@ -109,9 +99,9 @@ Toutes les recettes du cahier des charges ainsi que l'interface utilisateur web 
 | **A8** | **Concurrence & Invariant multi-thread** | 1. 5 places restantes, 2 requêtes simultanées de 4 places : exactement 1 succès (201) et 1 refus (409), total 19/20 (jamais 23).<br>2. Stress test : 10 places restantes, 10 requêtes de 2 places : 5 succès (201) et 5 refus (409), total 20/20 (0 surréservation). | `ReservationConcurrenceIntegrationTest` | **Validé** |
 | **A9** | **Annulation & Libération de capacité** | Annulation d'une réservation (HTTP 204), statut passant à `ANNULEE` et libération immédiate des places pour une nouvelle réservation. | `BilletterieIntegrationTest` | **Validé** |
 | **A10** | **Exploitation & Documentation publique** | 1. `GET /actuator/health` public renvoyant `{"status":"UP"}`.<br>2. `GET /v3/api-docs` public avec spécification OpenAPI.<br>3. `GET /swagger-ui.html` public (200 / 302).<br>4. Incrémentation vérifiée des compteurs Micrometer (`places.reservees` et `places.refusees`). | `ExploitationIntegrationTest` | **Validé** |
-| **Web UI** | **Interface Utilisateur Thymeleaf** | 1. Affichage du catalogue public (`GET /` et `/films`).<br>2. Affichage formulaire séance (`GET /seances/{id}/reserver`).<br>3. Réservation nominale avec redirection 3xx (`POST /reserver`).<br>4. Rejet surréservation 200 avec message d'erreur.<br>5. Affichage billet numérique (`GET /confirmation/{code}`).<br>6. Annulation avec redirection 3xx (`POST /annuler/{code}`).<br>7. Tableau de bord d'exploitation (`GET /admin/tableau-de-bord`). | `CinemaWebControllerTest` | **Validé** |
+| **Web UI & Auth** | **Interface Utilisateur, Form Login & Gestion** | 1. Affichage du catalogue public (`GET /` et `/films`).<br>2. Affichage page de connexion (`GET /connexion`).<br>3. Affichage formulaire séance (`GET /seances/{id}/reserver`).<br>4. Réservation nominale avec redirection 3xx (`POST /reserver`).<br>5. Rejet surréservation 200 avec message d'alerte.<br>6. Affichage billet numérique (`GET /confirmation/{code}`).<br>7. Annulation avec redirection 3xx (`POST /annuler/{code}`).<br>8. Redirection 3xx vers `/connexion` pour anonymes sur `/admin/tableau-de-bord`.<br>9. Accès 200 au tableau de bord pour `ADMIN`.<br>10. Accès 200 à la gestion de programmation pour `PROGRAMMATEUR`.<br>11. Accès 200 à la gestion des salles pour `ADMIN`. | `CinemaWebControllerTest` | **Validé** |
 
-**Bilan d'exécution final :** **20 tests d'intégration exécutés avec succès** (`.\mvnw.cmd clean verify`), 0 échec, 0 erreur (`BUILD SUCCESS`).
+**Bilan d'exécution final :** **24 tests d'intégration exécutés avec succès** (`.\mvnw.cmd clean verify`), 0 échec, 0 erreur (`BUILD SUCCESS`).
 
 ---
 
@@ -119,10 +109,10 @@ Toutes les recettes du cahier des charges ainsi que l'interface utilisateur web 
 
 ### 7.1. Ce qui a fonctionné efficacement :
 1. **Le cadrage strict par `.agentrules` :** Définir en amont les interdits absolus (pas de Lombok, code 100 % en français, zéro H2) a totalement supprimé les hallucinations courantes où l'IA propose par défaut du code en anglais ou des dépendances comme H2.
-2. **La mémoire persistante (`MEMOIRE.md`) :** En consignant l'état du système et les décisions techniques à chaque fin de phase, l'agent n'a jamais régressé sur les choix d'architecture antérieurs (ex. conservation systématique du verrou pessimiste et des DTOs en records).
-3. **Le découpage par phases et les tests de recette :** L'approche "une phase = une branche Git = des tests Testcontainers = un commit" a permis de valider le comportement réel sous MySQL 8.4 au fur et à mesure, rendant les phases finales très sereines.
+2. **La mémoire persistante (`MEMOIRE.md`) :** En consignant l'état du système et les décisions techniques à chaque fin de phase, l'agent n'a jamais régressé sur les choix d'architecture antérieurs (ex. conservation systématique du verrou pessimiste, des DTOs en records et des filtres de sécurité).
+3. **Le découpage par phases et les tests de recette :** L'approche "une phase = une branche Git = des tests Testcontainers = un commit" a permis de valider le comportement réel sous MySQL 8.4 au fur et à mesure, rendant les phases d'extension rapides et sans risque.
 
 ### 7.2. Pièges évités :
-1. **La modularité de Spring Boot 4 :** Dans Spring Boot 4, certaines dépendances et annotations de test ont été restructurées (ex. `AutoConfigureMockMvc` déplacé dans `spring-boot-starter-webmvc-test`). L'utilisation du client HTTP natif Java 25 (`java.net.http.HttpClient`) a permis de s'affranchir de toute dépendance fragile tout en exploitant pleinement les capacités modernes du JDK 25.
+1. **La séparation des chaînes de sécurité :** Éviter l'écueil classique où l'ajout d'une page de login web casse les tests REST existants en renvoyant des redirections HTTP 302 au lieu de codes `401 Unauthorized`. L'utilisation ordonnée de deux chaînes (`@Order(1)` et `@Order(2)`) a permis d'isoler parfaitement les deux contextes d'exécution.
 2. **Le verrouillage sous concurrence :** L'IA aurait pu être tentée d'utiliser une synchronisation Java en mémoire (`synchronized`). Le cadrage a imposé la délégation de la concurrence à InnoDB via `SELECT ... FOR UPDATE`, garantissant l'intégrité même en contexte distribué.
-3. **Les pièges de parsing Thymeleaf :** Lors de l'écriture des fragments d'en-tête, l'utilisation de simples guillemets au sein d'expressions Thymeleaf a provoqué une erreur de parsing. La détection immédiate lors de l'exécution du test `CinemaWebControllerTest` a permis de corriger la syntaxe immédiatement.
+3. **Les pièges de parsing Thymeleaf :** Détection et résolution immédiate des subtilités de syntaxe de fragments Thymeleaf et intégration directe des expressions de sécurité `sec:authorize`.

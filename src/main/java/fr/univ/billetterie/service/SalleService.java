@@ -5,6 +5,7 @@ import fr.univ.billetterie.dto.SalleResponse;
 import fr.univ.billetterie.entity.Salle;
 import fr.univ.billetterie.exception.ConflitMetierException;
 import fr.univ.billetterie.repository.SalleRepository;
+import java.util.List;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -28,6 +29,11 @@ public class SalleService {
         return versResponse(salleEnregistree);
     }
 
+    @Transactional(readOnly = true)
+    public List<Salle> listerToutesLesSalles() {
+        return salleRepository.findAll();
+    }
+
     public SalleResponse versResponse(Salle salle) {
         return new SalleResponse(
                 salle.getId(),
@@ -36,4 +42,3 @@ public class SalleService {
         );
     }
 }
-
