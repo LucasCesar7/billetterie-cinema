@@ -55,5 +55,17 @@ Ce document consigne l'état courant du projet, les choix d'architecture validé
 - **Contrôleurs REST fins (`fr.univ.billetterie.controller`) :**
   - `FilmController`, `SalleController`, `SeanceController`, `ReservationController` avec codes HTTP appropriés (200, 201 avec header Location, 204).
 - **Tests d'intégration (`BilletterieIntegrationTest`) :**
-  - Couverture des recettes du sujet : A3 (consultation publique), A4 (validation 400), A5 (sécurité 401/403/201), A6 & A7 (réservation 201 et saturation 409), A9 (annulation 204 et libération de places).
-  - Suite complète (7 tests) validée avec succès sur conteneur MySQL 8.4 réel.
+  - Couverture des recettes : A3 (consultation publique), A4 (validation 400), A5 (sécurité 401/403/201), A6 & A7 (réservation 201 et saturation 409), A9 (annulation 204 et libération de places).
+
+### Phase 4 (Terminée & Validée)
+- **Invariant de capacité et verrouillage pessimiste :**
+  - Verrou pessimiste en écriture `@Lock(LockModeType.PESSIMISTIC_WRITE)` sur `SeanceRepository.findByIdWithLock(id)`.
+  - Hibernate émet `SELECT ... FOR UPDATE` sur la ligne de la séance ciblée sous le moteur MySQL InnoDB.
+  - Séquence transactionnelle atomique dans `ReservationService.reserver(...)` : acquisition du verrou exclusif sur la séance, calcul des places réservées (`sumPlacesReservees`), rejet strict par `CapaciteInsuffisanteException` (409) si dépassement de la capacité de la salle, et rollback immédiat sans effet de bord.
+  - Configuration de la datasource avec `spring.datasource.hikari.maximum-pool-size: 20` pour absorber les pics de charge concurrentiels.
+- **Validation automatisée de la Recette A8 (`ReservationConcurrenceIntegrationTest`) :**
+  - Test 1 (Scénario nominal du sujet) : Séance avec 5 places disponibles restantes, 2 requêtes concurrentes déclenchées au même instant (`CountDownLatch`) demandant 4 places chacune. Résultat : exactement 1 succès (201), 1 rejet (409 `CAPACITE_INSUFFISANTE`), et exactement 4 places attribuées en base (total 19/20, jamais 23).
+  - Test 2 (Test de stress) : Séance avec 10 places restantes, 10 requêtes concurrentes déclenchées au même instant demandant 2 places chacune. Résultat : exactement 5 succès (201), 5 rejets (409 `CAPACITE_INSUFFISANTE`), total en base égal à 20/20 places (capacité maximale respectée à 100%, 0 surréservation).
+- **Bilan d'exécution Maven :**
+  - 9 tests d'intégration exécutés sur conteneur MySQL 8.4 réel (`SchemaValidationTest`, `BilletterieIntegrationTest`, `ReservationConcurrenceIntegrationTest`).
+  - 0 échec, 0 erreur (`BUILD SUCCESS`).

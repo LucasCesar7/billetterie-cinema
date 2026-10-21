@@ -22,10 +22,22 @@ Le développement est réalisé via l'agent Antigravity sous VS Code piloté par
 - Le projet avance par phases séquentielles vérifiées par `mvnw` avant chaque commit autonome.
 - La conception des prompts et des contrats d'API est cadrée en amont.
 
-### Journal des prompts structurants :
+### 2.1. Journal des prompts structurants :
 - **Prompt Phase 1 (Initialisation) :** Initialisation autonome du socle Maven (Java 25, Spring Boot 4.1.1, wrapper 3.3.4), configuration du fichier `docker-compose.yml` (MySQL 8.4 avec healthcheck), fichier `application.yml` avec validation stricte Hibernate et exposition Actuator minimale, arborescence Maven standard, classe principale et validation de la compilation par `mvnw clean compile`.
 - **Prompt Phase 2 (Persistance & Schéma) :** Configuration du remote GitHub officiel (`LucasCesar7/billetterie-cinema`), migrations Flyway V1 (schéma DDL complet avec contraintes CHECK et clés étrangères) et V2 (jeux de données de test), entités JPA sans Lombok, repositories Spring Data (avec `findByIdWithLock` et calcul des places réservées), tests d'intégration Testcontainers MySQL et validation du schéma sous `ddl-auto: validate`.
 - **Prompt Phase 3 (API REST, DTOs, Gestion d'erreurs, Sécurité & Recette) :** Création du fichier de mémoire persistante `MEMOIRE.md`, DTOs immuables en records Java 25 natifs avec validation Jakarta, exceptions métier et `@RestControllerAdvice` centralisé (`ErreurResponse` sans fuite de stack trace ni détails SQL), services métier transactionnels avec verrouillage pessimiste, sécurité stateless HTTP Basic avec hachage BCrypt et 3 rôles (`CLIENT`, `PROGRAMMATEUR`, `ADMIN`), contrôleurs REST conformes aux spécifications HTTP, tests d'intégration complets couvrant les recettes A3, A4, A5, A6, A7 et A9 sous Testcontainers MySQL 8.4.
+- **Prompt Phase 4 (Invariant de capacité, concurrence & Recette A8) :** Audit de la gestion transactionnelle, renforcement de l'isolation par verrou pessimiste InnoDB (`SELECT ... FOR UPDATE`), dimensionnement du pool HikariCP, conception du test multi-threadé `ReservationConcurrenceIntegrationTest` avec Testcontainers MySQL 8.4 validant le scénario nominal de concurrence (5 places restantes, 2 x 4 places demandées -> 1 succès 201, 1 refus 409) et le test de stress concurrentiel (10 places restantes, 10 x 2 places demandées -> 5 succès 201, 5 refus 409, 0 surréservation).
+
+### 2.2. Stratégie d'isolation et gestion de la concurrence
+
+#### Choix du verrou pessimiste (`PESSIMISTIC_WRITE`) face au verrou optimiste (`@Version`) :
+- **Verrou optimiste (`@Version`) :** Repose sur la détection a posteriori d'un conflit lors du `COMMIT`. En cas de forte contention (ex. ouverture d'une billetterie pour un film très attendu), plusieurs transactions lisent simultanément la même version. La première valide sa réservation et incrémente la version ; toutes les autres transactions concurrentes sont brutalement rejetées avec une `OptimisticLockException`. Pour offrir une expérience utilisateur correcte, l'application devrait alors implémenter une boucle de retry complexe (réessayer la réservation, relire la capacité, recalculer la somme), augmentant la latence et la charge CPU du serveur applicatif sans garantie de succès.
+- **Verrou pessimiste (`PESSIMISTIC_WRITE`) :** Repose sur la sérialisation des accès en amont directement au niveau du SGBD. La requête `SELECT ... FROM seance WHERE id = ? FOR UPDATE` pose un verrou exclusif sur la ligne de la séance ciblée dès l'entrée dans la méthode transactionnelle. Les transactions concurrentes se mettent en file d'attente au niveau du moteur de stockage plutôt que d'échouer. Chaque transaction examine séquentiellement l'état exact des places restantes. Dès que la capacité est atteinte, la transaction suivante détecte immédiatement que `placesDemandées > placesRestantes` et lève de manière déterministe `CapaciteInsuffisanteException` (HTTP 409), sans aucun besoin de retry applicatif.
+
+#### Comportement de MySQL InnoDB (Verrou de ligne et atomicité) :
+- MySQL InnoDB utilise des verrous de ligne d'index (*record locks*). Lorsqu'une transaction exécute `findByIdWithLock`, InnoDB acquiert un verrou exclusif (X-lock) sur l'entrée d'index correspondant à la clé primaire de la séance.
+- Les requêtes concurrentes tentant d'exécuter `findByIdWithLock` sur la même séance sont automatiquement suspendues par le gestionnaire de verrous d'InnoDB jusqu'au `COMMIT` ou `ROLLBACK` de la première transaction.
+- Cette sérialisation garantit que l'agrégat `sumPlacesReservees` reflète toujours les écritures déjà validées. L'invariant de capacité (`placesReservées + demande <= capacitéSalle`) est ainsi préservé de manière absolue, y compris dans une architecture distribuée où plusieurs instances du backend s'exécuteraient en parallèle (puisque la sérialisation est déléguée au moteur de base de données partagé).
 
 ---
 
@@ -39,7 +51,7 @@ Le développement est réalisé via l'agent Antigravity sous VS Code piloté par
   - Tests : `spring-boot-starter-test`, `spring-boot-starter-security-test`, `spring-boot-testcontainers`, `testcontainers-mysql`, `testcontainers-junit-jupiter`, `spring-boot-starter-webmvc-test`.
   - Respect strict des consignes : aucune dépendance superflue (zéro Lombok, zéro H2).
 - **Docker Compose :** Service MySQL 8.4 configuré (`billetterie_db`, `cinema_user` / `cinema_pass`), port 3306 exposé, volume nommé persistant et healthcheck configuré via `mysqladmin ping`.
-- **Configuration applicative (`application.yml`) :** Datasource pointant sur MySQL local, `spring.jpa.hibernate.ddl-auto: validate`, `spring.jpa.open-in-view: false`, Actuator configuré pour n'exposer que `health`.
+- **Configuration applicative (`application.yml`) :** Datasource pointant sur MySQL local, `spring.jpa.hibernate.ddl-auto: validate`, `spring.jpa.open-in-view: false`, Actuator configuré pour n'exposer que `health`, et dimensionnement du pool HikariCP (`maximum-pool-size: 20`).
 - **Validation :** `.\mvnw.cmd clean compile` exécuté avec succès.
 
 ---
@@ -98,8 +110,18 @@ Le développement est réalisé via l'agent Antigravity sous VS Code piloté par
   - Administration des salles et séances (`/api/salles/**`, création de séances) : réservées aux rôles `PROGRAMMATEUR` et `ADMIN`.
   - Création de films (`POST /api/films`) : réservée aux rôles `PROGRAMMATEUR` et `ADMIN`.
 
-### 5.4. Couverture des scénarios de recette (Tests d'intégration)
-La classe de test `BilletterieIntegrationTest` s'exécute sur une instance réelle MySQL 8.4 conteneurisée via Testcontainers et valide l'ensemble des scénarios de recette imposés par le sujet :
+---
+
+## 6. Phase 4 : Invariant de capacité, Concurrence multi-threadée et Recette A8
+
+### 6.1. Architecture transactionnelle sous contention
+- **Atomicité de la réservation :** Dans `ReservationService.creerReservation`, la pose du verrou `PESSIMISTIC_WRITE` sur la séance garantit qu'aucune autre transaction ne peut réserver simultanément sur la même séance.
+- **Révocation immédiate sans écriture partielle :** Si la somme des places réservées cumulée à la nouvelle demande excède la capacité de la salle, l'exception `CapaciteInsuffisanteException` est levée. L'annotation `@Transactional` déclenche un `ROLLBACK` intégral : aucune ligne orpheline n'est insérée dans la table `reservation`.
+
+### 6.2. Matrice globale des recettes de validation (Tests d'intégration)
+
+L'ensemble des tests s'exécute sur des conteneurs MySQL 8.4 réels via Testcontainers. Les recettes fonctionnelles et techniques imposées par le cahier des charges sont intégralement validées :
+
 | Recette | Description | Scénario de test | Statut |
 | :--- | :--- | :--- | :--- |
 | **A3** | Consultation publique des films | Requête anonyme `GET /api/films` renvoyant 200 avec la liste des films. | **Validé** |
@@ -107,6 +129,7 @@ La classe de test `BilletterieIntegrationTest` s'exécute sur une instance réel
 | **A5** | Contrôle d'accès et authentification | Création d'une salle sans auth (401), avec compte `client` (403), et avec compte `admin` (201). | **Validé** |
 | **A6** | Réservation nominale | Réservation de 4 places par un client authentifié (201 avec code unique et montant total exact). | **Validé** |
 | **A7** | Refus de surréservation (conflit de capacité) | Tentative de dépassement de la capacité restante de la salle renvoyant 409 et code `CAPACITE_INSUFFISANTE`. | **Validé** |
+| **A8** | **Concurrence & Invariant de capacité (multi-thread)** | **1. Scénario nominal (5 places restantes, 2 requêtes simultanées de 4 places) : exactement 1 succès (201), 1 rejet (409 `CAPACITE_INSUFFISANTE`), total en base = 19/20 (jamais 23).<br>2. Test de stress (10 places restantes, 10 requêtes simultanées de 2 places) : exactement 5 succès (201), 5 rejets (409 `CAPACITE_INSUFFISANTE`), total final = 20/20 (100 % plein, 0 surréservation).** | **Validé** |
 | **A9** | Annulation et libération de capacité | Annulation d'une réservation confirmée (204), libération des places et succès d'une nouvelle réservation. | **Validé** |
 
-L'ensemble des tests du projet (7 tests au total) s'exécute avec succès sur conteneur MySQL 8.4 réel (`BUILD SUCCESS`).
+**Bilan d'exécution :** 9 tests exécutés avec succès (`.\mvnw.cmd clean verify`), 0 échec, 0 erreur (`BUILD SUCCESS`).
