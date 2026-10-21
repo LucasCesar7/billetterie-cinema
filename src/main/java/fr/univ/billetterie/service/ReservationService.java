@@ -1,0 +1,86 @@
+package fr.univ.billetterie.service;
+
+import fr.univ.billetterie.dto.ReservationCreationRequest;
+import fr.univ.billetterie.dto.ReservationResponse;
+import fr.univ.billetterie.entity.Reservation;
+import fr.univ.billetterie.entity.Seance;
+import fr.univ.billetterie.entity.StatutReservation;
+import fr.univ.billetterie.exception.CapaciteInsuffisanteException;
+import fr.univ.billetterie.exception.RessourceIntrouvableException;
+import fr.univ.billetterie.repository.ReservationRepository;
+import fr.univ.billetterie.repository.SeanceRepository;
+import java.math.BigDecimal;
+import java.time.LocalDateTime;
+import java.util.UUID;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+@Service
+public class ReservationService {
+
+    private final ReservationRepository reservationRepository;
+    private final SeanceRepository seanceRepository;
+
+    public ReservationService(
+            ReservationRepository reservationRepository,
+            SeanceRepository seanceRepository
+    ) {
+        this.reservationRepository = reservationRepository;
+        this.seanceRepository = seanceRepository;
+    }
+
+    @Transactional
+    public ReservationResponse creerReservation(ReservationCreationRequest requete) {
+        Seance seance = seanceRepository.findByIdWithLock(requete.seanceId())
+                .orElseThrow(() -> new RessourceIntrouvableException(
+                        "SEANCE_INTROUVABLE",
+                        "La séance avec l'identifiant " + requete.seanceId() + " n'existe pas"
+                ));
+
+        int placesReservees = reservationRepository.sumPlacesReservees(seance.getId(), StatutReservation.CONFIRMEE);
+        int placesRestantes = seance.getSalle().getCapacite() - placesReservees;
+
+        if (requete.nombrePlaces() > placesRestantes) {
+            throw new CapaciteInsuffisanteException(
+                    "CAPACITE_INSUFFISANTE",
+                    "Il ne reste que " + placesRestantes + " places pour cette séance"
+            );
+        }
+
+        String code = "RES-" + UUID.randomUUID().toString().replace("-", "").substring(0, 10).toUpperCase();
+        BigDecimal montantTotal = seance.getPrixUnitaire().multiply(BigDecimal.valueOf(requete.nombrePlaces()));
+
+        Reservation reservation = new Reservation(
+                code,
+                seance,
+                requete.emailClient(),
+                requete.nombrePlaces(),
+                StatutReservation.CONFIRMEE,
+                LocalDateTime.now()
+        );
+
+        Reservation reservationEnregistree = reservationRepository.save(reservation);
+
+        return new ReservationResponse(
+                reservationEnregistree.getCode(),
+                reservationEnregistree.getStatut(),
+                reservationEnregistree.getNombrePlaces(),
+                montantTotal,
+                seance.getId(),
+                reservationEnregistree.getCreeeLe()
+        );
+    }
+
+    @Transactional
+    public void annulerReservation(String code) {
+        Reservation reservation = reservationRepository.findByCode(code)
+                .orElseThrow(() -> new RessourceIntrouvableException(
+                        "RESERVATION_INTROUVABLE",
+                        "La réservation avec le code " + code + " n'existe pas"
+                ));
+
+        reservation.setStatut(StatutReservation.ANNULEE);
+        reservationRepository.save(reservation);
+    }
+}
+
