@@ -18,7 +18,12 @@ public interface ReservationRepository extends JpaRepository<Reservation, Long> 
 
     boolean existsByCode(String code);
 
+    boolean existsBySeanceId(Long seanceId);
+
+    boolean existsBySeanceIdAndStatut(Long seanceId, StatutReservation statut);
+
+    long countBySeanceId(Long seanceId);
+
     @Query("SELECT COALESCE(SUM(r.nombrePlaces), 0) FROM Reservation r WHERE r.seance.id = :seanceId AND r.statut = :statut")
     int sumPlacesReservees(@Param("seanceId") Long seanceId, @Param("statut") StatutReservation statut);
 }
-

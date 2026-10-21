@@ -17,13 +17,14 @@
 
         <section class="entete-page">
             <h1>Gestion de la Programmation</h1>
-            <p>Ajoutez de nouveaux films au catalogue et planifiez les séances dans les salles physiques.</p>
+            <p>Ajoutez, modifiez ou supprimez les films du catalogue et planifiez les séances de projection.</p>
         </section>
 
+        <!-- Formulaires d'ajout rapide -->
         <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(380px, 1fr)); gap: 2rem; margin-bottom: 2.5rem;">
             <!-- Formulaire 1 : Ajouter un Film -->
             <article class="carte-film" style="padding: 1.75rem;">
-                <h2 style="font-size: 1.25rem; font-weight: 700; color: var(--or-cinema); margin-bottom: 1.25rem;">
+                <h2 style="font-size: 1.2rem; font-weight: 700; color: var(--or-cinema); margin-bottom: 1.25rem;">
                     🎬 Ajouter un Nouveau Film
                 </h2>
 
@@ -57,7 +58,7 @@
 
             <!-- Formulaire 2 : Planifier une Séance -->
             <article class="carte-film" style="padding: 1.75rem;">
-                <h2 style="font-size: 1.25rem; font-weight: 700; color: var(--or-cinema); margin-bottom: 1.25rem;">
+                <h2 style="font-size: 1.2rem; font-weight: 700; color: var(--or-cinema); margin-bottom: 1.25rem;">
                     📅 Planifier une Séance
                 </h2>
 
@@ -66,7 +67,7 @@
                         <label for="filmId" class="form-label">Sélectionner le film</label>
                         <select id="filmId" name="filmId" class="form-input" required>
                             <option value="" disabled selected>-- Choisissez un film --</option>
-                            <option th:each="f : ${films}" th:value="${f.id}" th:text="${f.titre + ' (' + f.dureeMinutes + ' min)'}">
+                            <option th:each="f : ${filmsChoix}" th:value="${f.id}" th:text="${f.titre + ' (' + f.dureeMinutes + ' min)'}">
                                 Film
                             </option>
                         </select>
@@ -99,7 +100,63 @@
             </article>
         </div>
 
-        <!-- Liste des Séances programmées -->
+        <!-- Section 1 : Catalogue des Films avec CRUD -->
+        <section style="margin-bottom: 2.5rem;">
+            <h2 style="font-size: 1.25rem; font-weight: 700; margin-bottom: 1rem; color: var(--texte-principal);">
+                Films au Catalogue
+            </h2>
+
+            <div class="table-conteneur">
+                <table class="table-admin">
+                    <thead>
+                        <tr>
+                            <th>Titre</th>
+                            <th>Genre</th>
+                            <th>Durée</th>
+                            <th>Date de Sortie</th>
+                            <th>Séances</th>
+                            <th style="text-align: right;">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr th:each="film : ${films}">
+                            <td style="font-weight: 600; color: var(--texte-principal);" th:text="${film.titre}">Film</td>
+                            <td>
+                                <span class="badge badge-genre" th:if="${film.genre}" th:text="${film.genre}">Genre</span>
+                            </td>
+                            <td th:text="${film.dureeFormatee}">2h 15min</td>
+                            <td th:text="${film.dateSortie != null ? film.dateSortie : '-'}">2024-03-01</td>
+                            <td>
+                                <span th:text="${film.nombreSeances + ' séance(s)'}"
+                                      th:style="${film.nombreSeances > 0} ? 'color: var(--succes);' : 'color: var(--texte-discret);'">
+                                    1 séance(s)
+                                </span>
+                            </td>
+                            <td style="text-align: right;">
+                                <div style="display: inline-flex; gap: 0.5rem;">
+                                    <a th:href="@{'/programmation/films/' + ${film.id} + '/modifier'}" class="btn btn-sm btn-secondaire">
+                                        ✏️ Modifier
+                                    </a>
+                                    <form th:action="@{'/programmation/films/' + ${film.id} + '/supprimer'}" method="post" style="display: inline; margin: 0;"
+                                          onsubmit="return confirm('Êtes-vous certain de vouloir supprimer ce film ?');">
+                                        <button type="submit" class="btn btn-sm btn-danger">
+                                            🗑️
+                                        </button>
+                                    </form>
+                                </div>
+                            </td>
+                        </tr>
+                        <tr th:if="${#lists.isEmpty(films)}">
+                            <td colspan="6" style="text-align: center; color: var(--texte-discret); padding: 1.5rem;">
+                                Aucun film enregistré pour le moment.
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </section>
+
+        <!-- Section 2 : Liste des Séances avec CRUD -->
         <section>
             <h2 style="font-size: 1.25rem; font-weight: 700; margin-bottom: 1rem; color: var(--texte-principal);">
                 Séances Actuellement Ouvertes
@@ -114,7 +171,7 @@
                             <th>Date &amp; Heure</th>
                             <th>Prix</th>
                             <th>Places Restantes</th>
-                            <th>Action</th>
+                            <th style="text-align: right;">Actions</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -124,10 +181,21 @@
                             <td th:text="${seance.dateFormatee + ' - ' + seance.heureFormatee}">24 oct. - 20h30</td>
                             <td style="color: var(--or-cinema); font-weight: 600;" th:text="${#numbers.formatDecimal(seance.prixUnitaire, 1, 2) + ' €'}">10,50 €</td>
                             <td th:text="${seance.placesRestantes + ' / ' + seance.capaciteSalle}">85 / 100</td>
-                            <td>
-                                <a th:href="@{'/seances/' + ${seance.id} + '/reserver'}" class="btn btn-sm btn-secondaire">
-                                    Voir page réservation
-                                </a>
+                            <td style="text-align: right;">
+                                <div style="display: inline-flex; gap: 0.5rem;">
+                                    <a th:href="@{'/seances/' + ${seance.id} + '/reserver'}" class="btn btn-sm btn-secondaire" title="Voir la page de réservation">
+                                        🎟️
+                                    </a>
+                                    <a th:href="@{'/programmation/seances/' + ${seance.id} + '/modifier'}" class="btn btn-sm btn-secondaire">
+                                        ✏️ Modifier
+                                    </a>
+                                    <form th:action="@{'/programmation/seances/' + ${seance.id} + '/supprimer'}" method="post" style="display: inline; margin: 0;"
+                                          onsubmit="return confirm('Êtes-vous certain de vouloir supprimer cette séance ?');">
+                                        <button type="submit" class="btn btn-sm btn-danger">
+                                            🗑️
+                                        </button>
+                                    </form>
+                                </div>
                             </td>
                         </tr>
                         <tr th:if="${#lists.isEmpty(seances)}">
@@ -144,4 +212,3 @@
     <footer th:replace="~{layout :: pied-page}"></footer>
 </body>
 </html>
-

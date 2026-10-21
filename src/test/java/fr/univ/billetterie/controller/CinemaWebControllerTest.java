@@ -3,6 +3,7 @@ package fr.univ.billetterie.controller;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.flash;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.model;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.redirectedUrl;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.redirectedUrlPattern;
@@ -227,5 +228,180 @@ class CinemaWebControllerTest {
                 .andExpect(status().isOk())
                 .andExpect(view().name("gestion-salles"))
                 .andExpect(model().attributeExists("salles"));
+    }
+
+    @Test
+    @WithMockUser(username = "admin", roles = {"ADMIN"})
+    @DisplayName("Web Salles : GET /admin/salles/{id}/modifier affiche le formulaire d'édition")
+    void afficherFormulaireModifierSalle_admin_devraitRenvoyerVue() throws Exception {
+        mockMvc.perform(get("/admin/salles/" + salleTest.getId() + "/modifier"))
+                .andExpect(status().isOk())
+                .andExpect(view().name("modifier-salle"))
+                .andExpect(model().attributeExists("salle"));
+    }
+
+    @Test
+    @WithMockUser(username = "admin", roles = {"ADMIN"})
+    @DisplayName("Web Salles : POST /admin/salles/{id}/modifier met à jour la salle et redirige")
+    void modifierSalleWeb_admin_devraitModifierEtRediriger() throws Exception {
+        mockMvc.perform(post("/admin/salles/" + salleTest.getId() + "/modifier")
+                        .param("nom", "Salle IMAX Renommee")
+                        .param("capacite", "120"))
+                .andExpect(status().is3xxRedirection())
+                .andExpect(redirectedUrl("/admin/salles"))
+                .andExpect(flash().attributeExists("messageSucces"));
+
+        Salle salleModifiee = salleRepository.findById(salleTest.getId()).orElseThrow();
+        assertThat(salleModifiee.getNom()).isEqualTo("Salle IMAX Renommee");
+        assertThat(salleModifiee.getCapacite()).isEqualTo(120);
+    }
+
+    @Test
+    @WithMockUser(username = "admin", roles = {"ADMIN"})
+    @DisplayName("Web Salles : POST /admin/salles/{id}/supprimer refuse la suppression si des séances existent")
+    void supprimerSalleWeb_avecSeances_devraitEchouer() throws Exception {
+        mockMvc.perform(post("/admin/salles/" + salleTest.getId() + "/supprimer"))
+                .andExpect(status().is3xxRedirection())
+                .andExpect(redirectedUrl("/admin/salles"))
+                .andExpect(flash().attributeExists("messageErreur"));
+
+        assertThat(salleRepository.existsById(salleTest.getId())).isTrue();
+    }
+
+    @Test
+    @WithMockUser(username = "admin", roles = {"ADMIN"})
+    @DisplayName("Web Salles : POST /admin/salles/{id}/supprimer supprime une salle sans séance")
+    void supprimerSalleWeb_sansSeance_devraitSupprimer() throws Exception {
+        Salle salleIsolee = salleRepository.save(new Salle("Salle Temporaire", 30));
+
+        mockMvc.perform(post("/admin/salles/" + salleIsolee.getId() + "/supprimer"))
+                .andExpect(status().is3xxRedirection())
+                .andExpect(redirectedUrl("/admin/salles"))
+                .andExpect(flash().attributeExists("messageSucces"));
+
+        assertThat(salleRepository.existsById(salleIsolee.getId())).isFalse();
+    }
+
+    @Test
+    @WithMockUser(username = "programmateur", roles = {"PROGRAMMATEUR"})
+    @DisplayName("Web Films : GET /programmation/films/{id}/modifier affiche le formulaire d'édition")
+    void afficherFormulaireModifierFilm_devraitRenvoyerVue() throws Exception {
+        mockMvc.perform(get("/programmation/films/" + filmTest.getId() + "/modifier"))
+                .andExpect(status().isOk())
+                .andExpect(view().name("modifier-film"))
+                .andExpect(model().attributeExists("film"));
+    }
+
+    @Test
+    @WithMockUser(username = "programmateur", roles = {"PROGRAMMATEUR"})
+    @DisplayName("Web Films : POST /programmation/films/{id}/modifier modifie le film et redirige")
+    void modifierFilmWeb_devraitModifierEtRediriger() throws Exception {
+        mockMvc.perform(post("/programmation/films/" + filmTest.getId() + "/modifier")
+                        .param("titre", "Dune 2 Version Longue")
+                        .param("genre", "Sci-Fi Epique")
+                        .param("dureeMinutes", "185")
+                        .param("dateSortie", "2024-03-15"))
+                .andExpect(status().is3xxRedirection())
+                .andExpect(redirectedUrl("/programmation"))
+                .andExpect(flash().attributeExists("messageSucces"));
+
+        Film filmModifie = filmRepository.findById(filmTest.getId()).orElseThrow();
+        assertThat(filmModifie.getTitre()).isEqualTo("Dune 2 Version Longue");
+        assertThat(filmModifie.getDureeMinutes()).isEqualTo(185);
+    }
+
+    @Test
+    @WithMockUser(username = "programmateur", roles = {"PROGRAMMATEUR"})
+    @DisplayName("Web Films : POST /programmation/films/{id}/supprimer refuse la suppression si des séances existent")
+    void supprimerFilmWeb_avecSeances_devraitEchouer() throws Exception {
+        mockMvc.perform(post("/programmation/films/" + filmTest.getId() + "/supprimer"))
+                .andExpect(status().is3xxRedirection())
+                .andExpect(redirectedUrl("/programmation"))
+                .andExpect(flash().attributeExists("messageErreur"));
+
+        assertThat(filmRepository.existsById(filmTest.getId())).isTrue();
+    }
+
+    @Test
+    @WithMockUser(username = "programmateur", roles = {"PROGRAMMATEUR"})
+    @DisplayName("Web Films : POST /programmation/films/{id}/supprimer supprime un film sans séance")
+    void supprimerFilmWeb_sansSeance_devraitSupprimer() throws Exception {
+        Film filmIsole = filmRepository.save(new Film("Film Isole", "Drame", 95, LocalDate.of(2025, 1, 10)));
+
+        mockMvc.perform(post("/programmation/films/" + filmIsole.getId() + "/supprimer"))
+                .andExpect(status().is3xxRedirection())
+                .andExpect(redirectedUrl("/programmation"))
+                .andExpect(flash().attributeExists("messageSucces"));
+
+        assertThat(filmRepository.existsById(filmIsole.getId())).isFalse();
+    }
+
+    @Test
+    @WithMockUser(username = "programmateur", roles = {"PROGRAMMATEUR"})
+    @DisplayName("Web Séances : GET /programmation/seances/{id}/modifier affiche le formulaire d'édition")
+    void afficherFormulaireModifierSeance_devraitRenvoyerVue() throws Exception {
+        mockMvc.perform(get("/programmation/seances/" + seanceTest.getId() + "/modifier"))
+                .andExpect(status().isOk())
+                .andExpect(view().name("modifier-seance"))
+                .andExpect(model().attributeExists("seance", "films", "salles"));
+    }
+
+    @Test
+    @WithMockUser(username = "programmateur", roles = {"PROGRAMMATEUR"})
+    @DisplayName("Web Séances : POST /programmation/seances/{id}/modifier met à jour la séance et redirige")
+    void modifierSeanceWeb_devraitModifierEtRediriger() throws Exception {
+        LocalDateTime nouveauDebut = LocalDateTime.now().plusDays(4).withHour(18).withMinute(30).withSecond(0).withNano(0);
+
+        mockMvc.perform(post("/programmation/seances/" + seanceTest.getId() + "/modifier")
+                        .param("filmId", filmTest.getId().toString())
+                        .param("salleId", salleTest.getId().toString())
+                        .param("debut", nouveauDebut.toString())
+                        .param("prixUnitaire", "15.50"))
+                .andExpect(status().is3xxRedirection())
+                .andExpect(redirectedUrl("/programmation"))
+                .andExpect(flash().attributeExists("messageSucces"));
+
+        Seance seanceModifiee = seanceRepository.findById(seanceTest.getId()).orElseThrow();
+        assertThat(seanceModifiee.getPrixUnitaire()).isEqualByComparingTo("15.50");
+    }
+
+    @Test
+    @WithMockUser(username = "programmateur", roles = {"PROGRAMMATEUR"})
+    @DisplayName("Web Séances : POST /programmation/seances/{id}/supprimer refuse la suppression si des réservations existent")
+    void supprimerSeanceWeb_avecReservations_devraitEchouer() throws Exception {
+        reservationRepository.save(new Reservation(
+                "RES-BLOQUER",
+                seanceTest,
+                "client@test.fr",
+                2,
+                StatutReservation.CONFIRMEE,
+                LocalDateTime.now()
+        ));
+
+        mockMvc.perform(post("/programmation/seances/" + seanceTest.getId() + "/supprimer"))
+                .andExpect(status().is3xxRedirection())
+                .andExpect(redirectedUrl("/programmation"))
+                .andExpect(flash().attributeExists("messageErreur"));
+
+        assertThat(seanceRepository.existsById(seanceTest.getId())).isTrue();
+    }
+
+    @Test
+    @WithMockUser(username = "programmateur", roles = {"PROGRAMMATEUR"})
+    @DisplayName("Web Séances : POST /programmation/seances/{id}/supprimer supprime une séance sans réservation")
+    void supprimerSeanceWeb_sansReservation_devraitSupprimer() throws Exception {
+        Seance seanceIsolee = seanceRepository.save(new Seance(
+                filmTest,
+                salleTest,
+                LocalDateTime.now().plusDays(5).withHour(14).withMinute(0),
+                BigDecimal.valueOf(9.00)
+        ));
+
+        mockMvc.perform(post("/programmation/seances/" + seanceIsolee.getId() + "/supprimer"))
+                .andExpect(status().is3xxRedirection())
+                .andExpect(redirectedUrl("/programmation"))
+                .andExpect(flash().attributeExists("messageSucces"));
+
+        assertThat(seanceRepository.existsById(seanceIsolee.getId())).isFalse();
     }
 }

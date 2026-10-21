@@ -1,12 +1,17 @@
 package fr.univ.billetterie.controller.web;
 
 import fr.univ.billetterie.dto.FilmCreationRequest;
+import fr.univ.billetterie.dto.FilmModificationRequest;
 import fr.univ.billetterie.dto.ReservationCreationRequest;
 import fr.univ.billetterie.dto.ReservationResponse;
 import fr.univ.billetterie.dto.SalleCreationRequest;
+import fr.univ.billetterie.dto.SalleModificationRequest;
 import fr.univ.billetterie.dto.SeanceCreationRequest;
+import fr.univ.billetterie.dto.SeanceModificationRequest;
 import fr.univ.billetterie.dto.web.BilletConfirmationVue;
 import fr.univ.billetterie.dto.web.FilmCatalogueVue;
+import fr.univ.billetterie.dto.web.FilmLigneVue;
+import fr.univ.billetterie.dto.web.SalleLigneVue;
 import fr.univ.billetterie.dto.web.SeanceDetailVue;
 import fr.univ.billetterie.dto.web.SeanceResumeVue;
 import fr.univ.billetterie.dto.web.TableauDeBordVue;
@@ -221,7 +226,21 @@ public class CinemaWebController {
 
     @GetMapping("/programmation")
     public String afficherPageProgrammation(Model model) {
-        model.addAttribute("films", filmService.listerTousLesFilms());
+        List<Film> films = filmService.listerTousLesFilms();
+        List<FilmLigneVue> vuesFilms = films.stream()
+                .map(f -> new FilmLigneVue(
+                        f.getId(),
+                        f.getTitre(),
+                        f.getGenre(),
+                        f.getDureeMinutes(),
+                        formaterDuree(f.getDureeMinutes()),
+                        f.getDateSortie(),
+                        filmService.compterSeancesPourFilm(f.getId())
+                ))
+                .toList();
+
+        model.addAttribute("films", vuesFilms);
+        model.addAttribute("filmsChoix", films);
         model.addAttribute("salles", salleService.listerToutesLesSalles());
         model.addAttribute("seances", seanceService.listerToutesLesSeances().stream()
                 .map(this::construireSeanceResume)
@@ -248,6 +267,43 @@ public class CinemaWebController {
         return "redirect:/programmation";
     }
 
+    @GetMapping("/programmation/films/{id}/modifier")
+    public String afficherFormulaireModifierFilm(@PathVariable Long id, Model model) {
+        Film film = filmService.trouverFilm(id);
+        model.addAttribute("film", film);
+        return "modifier-film";
+    }
+
+    @PostMapping("/programmation/films/{id}/modifier")
+    public String modifierFilmWeb(
+            @PathVariable Long id,
+            @RequestParam("titre") String titre,
+            @RequestParam(value = "genre", required = false) String genre,
+            @RequestParam("dureeMinutes") Integer dureeMinutes,
+            @RequestParam(value = "dateSortie", required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate dateSortie,
+            RedirectAttributes redirectAttributes
+    ) {
+        try {
+            LocalDate dateEffective = dateSortie != null ? dateSortie : LocalDate.now();
+            filmService.modifierFilm(id, new FilmModificationRequest(titre, genre, dureeMinutes, dateEffective));
+            redirectAttributes.addFlashAttribute("messageSucces", "Le film '" + titre + "' a été modifié avec succès.");
+        } catch (Exception exception) {
+            redirectAttributes.addFlashAttribute("messageErreur", "Erreur lors de la modification : " + exception.getMessage());
+        }
+        return "redirect:/programmation";
+    }
+
+    @PostMapping("/programmation/films/{id}/supprimer")
+    public String supprimerFilmWeb(@PathVariable Long id, RedirectAttributes redirectAttributes) {
+        try {
+            filmService.supprimerFilm(id);
+            redirectAttributes.addFlashAttribute("messageSucces", "Le film a été supprimé avec succès.");
+        } catch (Exception exception) {
+            redirectAttributes.addFlashAttribute("messageErreur", exception.getMessage());
+        }
+        return "redirect:/programmation";
+    }
+
     @PostMapping("/programmation/seances")
     public String creerSeanceWeb(
             @RequestParam("filmId") Long filmId,
@@ -266,9 +322,57 @@ public class CinemaWebController {
         return "redirect:/programmation";
     }
 
+    @GetMapping("/programmation/seances/{id}/modifier")
+    public String afficherFormulaireModifierSeance(@PathVariable Long id, Model model) {
+        Seance seance = seanceService.trouverSeance(id);
+        model.addAttribute("seance", seance);
+        model.addAttribute("films", filmService.listerTousLesFilms());
+        model.addAttribute("salles", salleService.listerToutesLesSalles());
+        return "modifier-seance";
+    }
+
+    @PostMapping("/programmation/seances/{id}/modifier")
+    public String modifierSeanceWeb(
+            @PathVariable Long id,
+            @RequestParam("filmId") Long filmId,
+            @RequestParam("salleId") Long salleId,
+            @RequestParam("debut") @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime debut,
+            @RequestParam("prixUnitaire") BigDecimal prixUnitaire,
+            RedirectAttributes redirectAttributes
+    ) {
+        try {
+            seanceService.modifierSeance(id, new SeanceModificationRequest(filmId, salleId, debut, prixUnitaire));
+            redirectAttributes.addFlashAttribute("messageSucces", "La séance a été modifiée avec succès.");
+        } catch (Exception exception) {
+            redirectAttributes.addFlashAttribute("messageErreur", "Erreur lors de la modification : " + exception.getMessage());
+        }
+        return "redirect:/programmation";
+    }
+
+    @PostMapping("/programmation/seances/{id}/supprimer")
+    public String supprimerSeanceWeb(@PathVariable Long id, RedirectAttributes redirectAttributes) {
+        try {
+            seanceService.supprimerSeance(id);
+            redirectAttributes.addFlashAttribute("messageSucces", "La séance a été supprimée avec succès.");
+        } catch (Exception exception) {
+            redirectAttributes.addFlashAttribute("messageErreur", exception.getMessage());
+        }
+        return "redirect:/programmation";
+    }
+
     @GetMapping("/admin/salles")
     public String afficherGestionSalles(Model model) {
-        model.addAttribute("salles", salleService.listerToutesLesSalles());
+        List<Salle> salles = salleService.listerToutesLesSalles();
+        List<SalleLigneVue> vues = salles.stream()
+                .map(s -> new SalleLigneVue(
+                        s.getId(),
+                        s.getNom(),
+                        s.getCapacite(),
+                        salleService.compterSeancesPourSalle(s.getId())
+                ))
+                .toList();
+
+        model.addAttribute("salles", vues);
         return "gestion-salles";
     }
 
@@ -284,6 +388,40 @@ public class CinemaWebController {
             redirectAttributes.addFlashAttribute("messageSucces", "La salle '" + nom + "' (" + capacite + " places) a été créée avec succès.");
         } catch (Exception exception) {
             redirectAttributes.addFlashAttribute("messageErreur", "Impossible de créer la salle : " + exception.getMessage());
+        }
+        return "redirect:/admin/salles";
+    }
+
+    @GetMapping("/admin/salles/{id}/modifier")
+    public String afficherFormulaireModifierSalle(@PathVariable Long id, Model model) {
+        Salle salle = salleService.trouverSalle(id);
+        model.addAttribute("salle", salle);
+        return "modifier-salle";
+    }
+
+    @PostMapping("/admin/salles/{id}/modifier")
+    public String modifierSalleWeb(
+            @PathVariable Long id,
+            @RequestParam("nom") String nom,
+            @RequestParam("capacite") Integer capacite,
+            RedirectAttributes redirectAttributes
+    ) {
+        try {
+            salleService.modifierSalle(id, new SalleModificationRequest(nom, capacite));
+            redirectAttributes.addFlashAttribute("messageSucces", "La salle '" + nom + "' a été modifiée avec succès.");
+        } catch (Exception exception) {
+            redirectAttributes.addFlashAttribute("messageErreur", "Erreur lors de la modification : " + exception.getMessage());
+        }
+        return "redirect:/admin/salles";
+    }
+
+    @PostMapping("/admin/salles/{id}/supprimer")
+    public String supprimerSalleWeb(@PathVariable Long id, RedirectAttributes redirectAttributes) {
+        try {
+            salleService.supprimerSalle(id);
+            redirectAttributes.addFlashAttribute("messageSucces", "La salle a été supprimée avec succès.");
+        } catch (Exception exception) {
+            redirectAttributes.addFlashAttribute("messageErreur", exception.getMessage());
         }
         return "redirect:/admin/salles";
     }

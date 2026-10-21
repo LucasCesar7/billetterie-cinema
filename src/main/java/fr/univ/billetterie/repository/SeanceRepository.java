@@ -28,5 +28,12 @@ public interface SeanceRepository extends JpaRepository<Seance, Long> {
 
     @Query("SELECT s FROM Seance s JOIN FETCH s.film JOIN FETCH s.salle WHERE s.film.id = :filmId ORDER BY s.debut ASC")
     List<Seance> findByFilmIdWithFilmAndSalle(@Param("filmId") Long filmId);
-}
 
+    boolean existsByFilmId(Long filmId);
+
+    boolean existsBySalleId(Long salleId);
+
+    long countByFilmId(Long filmId);
+
+    long countBySalleId(Long salleId);
+}

@@ -11,5 +11,6 @@ public interface SalleRepository extends JpaRepository<Salle, Long> {
     Optional<Salle> findByNom(String nom);
 
     boolean existsByNom(String nom);
-}
 
+    boolean existsByNomAndIdNot(String nom, Long id);
+}

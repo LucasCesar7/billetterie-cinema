@@ -69,9 +69,13 @@ public class SecurityConfig {
 
                         // Opérations de programmation (Programmateur ou Admin)
                         .requestMatchers(HttpMethod.POST, "/api/programmation/**").hasAnyRole("PROGRAMMATEUR", "ADMIN")
+                        .requestMatchers(HttpMethod.PUT, "/api/programmation/**").hasAnyRole("PROGRAMMATEUR", "ADMIN")
+                        .requestMatchers(HttpMethod.DELETE, "/api/programmation/**").hasAnyRole("PROGRAMMATEUR", "ADMIN")
 
                         // Opérations d'administration (Admin uniquement)
                         .requestMatchers(HttpMethod.POST, "/api/admin/**").hasRole("ADMIN")
+                        .requestMatchers(HttpMethod.PUT, "/api/admin/**").hasRole("ADMIN")
+                        .requestMatchers(HttpMethod.DELETE, "/api/admin/**").hasRole("ADMIN")
 
                         // Création de réservation (Client uniquement)
                         .requestMatchers(HttpMethod.POST, "/api/reservations").hasRole("CLIENT")

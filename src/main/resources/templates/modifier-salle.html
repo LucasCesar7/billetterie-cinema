@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="fr" xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{layout :: entete('Modifier la Salle')}"></head>
+<body>
+    <header th:replace="~{layout :: barre-navigation('salles')}"></header>
+
+    <main class="conteneur" style="max-width: 600px;">
+        <div style="margin-bottom: 1.5rem;">
+            <a th:href="@{/admin/salles}" style="display: inline-flex; align-items: center; gap: 0.4rem; font-size: 0.9rem; color: var(--texte-secondaire);">
+                <span>←</span>
+                <span>Retour à la gestion des salles</span>
+            </a>
+        </div>
+
+        <section class="carte-film" style="padding: 2rem;">
+            <h1 style="font-size: 1.5rem; font-weight: 700; color: var(--texte-principal); margin-bottom: 0.5rem;">
+                Modifier la Salle
+            </h1>
+            <p style="color: var(--texte-secondaire); font-size: 0.9rem; margin-bottom: 1.5rem;">
+                Modifiez les paramètres physiques de la salle. Le nom doit rester unique.
+            </p>
+
+            <form th:action="@{'/admin/salles/' + ${salle.id} + '/modifier'}" method="post">
+                <div class="form-groupe">
+                    <label for="nom" class="form-label">Nom de la salle</label>
+                    <input type="text" id="nom" name="nom" class="form-input" th:value="${salle.nom}" required>
+                </div>
+
+                <div class="form-groupe">
+                    <label for="capacite" class="form-label">Capacité (places assises)</label>
+                    <input type="number" id="capacite" name="capacite" class="form-input" min="20" max="500" th:value="${salle.capacite}" required>
+                    <div class="form-aide">Comprise entre 20 et 500 places.</div>
+                </div>
+
+                <div style="display: flex; gap: 1rem; margin-top: 1.5rem;">
+                    <button type="submit" class="btn btn-or" style="flex: 1;">
+                        Enregistrer les modifications
+                    </button>
+                    <a th:href="@{/admin/salles}" class="btn btn-secondaire">
+                        Annuler
+                    </a>
+                </div>
+            </form>
+        </section>
+    </main>
+
+    <footer th:replace="~{layout :: pied-page}"></footer>
+</body>
+</html>
