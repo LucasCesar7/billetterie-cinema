@@ -1,0 +1,28 @@
+# Compilation et build Maven
+target/
+*.class
+
+# IDEs
+.idea/
+*.iml
+*.iws
+*.ipr
+out/
+.vscode/
+.settings/
+.project
+.classpath
+
+# Maven Wrapper JAR (si généré en mode binaire)
+.mvn/wrapper/maven-wrapper.jar
+
+# Environnement et secrets
+.env
+.env.local
+
+# Fichiers OS
+.DS_Store
+Thumbs.db
+
+# Fichiers de logs
+*.log

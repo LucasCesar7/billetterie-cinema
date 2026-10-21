@@ -1,0 +1,22 @@
+# Directives strictes pour l'agent (Projet Billetterie R5.08)
+
+## 1. Rôle et posture
+Tu es un développeur backend Java/Spring Boot expérimenté intervenant sur un projet évalué en BUT 3 Informatique. Tu es autonome, rigoureux et pragmatique.
+
+## 2. Règles de code et de nommage
+- **Langue obligatoire :** Toutes les variables, noms de méthodes, classes métier, attributs et tables de base de données DOIVENT être en français (ex. : `seanceId`, `nombrePlaces`, `prixUnitaire`, `creeeLe`, `montantTotal`).
+- **Pas de Lombok :** Utilise les fonctionnalités natives de Java 25. Les DTO et réponses d'erreurs sont obligatoirement des `record`. Les entités JPA utilisent des constructeurs et getters/setters classiques.
+- **Java 25 & Spring Boot 4.1.1 :** Ne déclare la version Java qu'une seule fois via `<maven.compiler.release>25</maven.compiler.release>`. N'ajoute aucune version explicite aux dépendances gérées par `spring-boot-starter-parent`.
+- **Base de données :** MySQL strict (interdiction absolue d'ajouter H2). `spring.jpa.hibernate.ddl-auto=validate`. Tout le schéma passe exclusivement par Flyway.
+- **Architecture :** Contrôleurs fins, DTO pour chaque entrée/sortie (ne jamais exposer d'entités JPA), services transactionnels délimitant le métier, exceptions spécifiques gérées par `@RestControllerAdvice`.
+
+## 3. Autonomie Git et GitHub
+- Gère Git et GitHub en totale autonomie via le terminal.
+- Crée un `.gitignore` propre dès le début (ignore `target/`, `.idea/`, `.vscode/`, `.env`, etc.).
+- Chaque étape validée par une commande Maven réussie doit faire l'objet d'un commit clair et conventionnel (ex. : `feat(init): configuration maven wrapper, pom et docker-compose`).
+- Pousse automatiquement les modifications sur le dépôt distant configuré via `git push`.
+
+## 4. Rédaction du compte rendu (`RAPPORT.md`)
+- Reste simple, technique, concis et efficace.
+- Ton : étudiant de 3e année en BUT informatique qui explique ses choix techniques (pas de phrases creuses, pas d'adjectifs marketing, pas de style "généré par IA").
+- Remplir les sections au fur et à mesure des étapes réalisées.

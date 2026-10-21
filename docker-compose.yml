@@ -1,0 +1,23 @@
+services:
+  mysql:
+    image: mysql:8.4
+    container_name: billetterie-mysql
+    restart: unless-stopped
+    environment:
+      MYSQL_DATABASE: billetterie_db
+      MYSQL_USER: cinema_user
+      MYSQL_PASSWORD: cinema_pass
+      MYSQL_ROOT_PASSWORD: root_pass
+    ports:
+      - "3306:3306"
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "cinema_user", "-pcinema_pass"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
+    volumes:
+      - mysql_data:/var/lib/mysql
+
+volumes:
+  mysql_data:
