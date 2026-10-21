@@ -7,3 +7,4 @@ public record SalleLigneVue(
         long nombreSeances
 ) {
 }
+

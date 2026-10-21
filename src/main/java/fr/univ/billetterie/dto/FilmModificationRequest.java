@@ -21,3 +21,4 @@ public record FilmModificationRequest(
         LocalDate dateSortie
 ) {
 }
+

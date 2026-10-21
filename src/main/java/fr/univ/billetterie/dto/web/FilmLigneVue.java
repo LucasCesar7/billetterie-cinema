@@ -12,3 +12,4 @@ public record FilmLigneVue(
         long nombreSeances
 ) {
 }
+
