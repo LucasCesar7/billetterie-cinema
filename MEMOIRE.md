@@ -34,31 +34,26 @@ Ce document consigne l'état courant du projet, les choix d'architecture validé
   - `V1__creation_schema.sql` : Tables `film`, `salle`, `seance`, `reservation` avec clés primaires `BIGINT`, clés étrangères `ON DELETE RESTRICT`, contraintes `CHECK`, contraintes d'unicité sur `salle.nom` et `reservation.code`, et index optimisés.
   - `V2__donnees_demonstration.sql` : Données de démonstration (*Inception*, *Interstellar*, *Salle 1* de 100 places, séance future à 10.50 €).
 - **Entités JPA (`fr.univ.billetterie.entity`) :**
-  - `Film` (id, titre, genre, dureeMinutes, dateSortie)
-  - `Salle` (id, nom, capacite)
-  - `Seance` (id, film, salle, debut, prixUnitaire en `BigDecimal`)
-  - `Reservation` (id, code, seance, emailClient, nombrePlaces, statut `StatutReservation`, creeeLe)
-  - `StatutReservation` : enum (`CONFIRMEE`, `ANNULEE`).
+  - `Film`, `Salle`, `Seance`, `Reservation`, `StatutReservation` (enum).
 - **Repositories Spring Data (`fr.univ.billetterie.repository`) :**
-  - `FilmRepository` : filtres de recherche.
-  - `SalleRepository` : recherche et vérification par nom.
-  - `SeanceRepository` : recherche par créneau et méthode verrouillée `findByIdWithLock(Long id)` avec `@Lock(LockModeType.PESSIMISTIC_WRITE)`.
-  - `ReservationRepository` : recherche par code et requête agrégée `sumPlacesReservees`.
+  - `FilmRepository`, `SalleRepository`, `SeanceRepository` (avec `findByIdWithLock`), `ReservationRepository` (avec `sumPlacesReservees`).
 - **Validation Testcontainers :**
-  - `SchemaValidationTest` passe avec succès sur un conteneur MySQL 8.4 réel (0 échec, validation Hibernate réussie).
+  - `SchemaValidationTest` validé avec succès (validation Hibernate et requêtes JPA).
 
----
-
-## 3. Phase 3 en cours : API REST, DTOs, Gestion des erreurs et Sécurité HTTP Basic
-
-- Branche courante : `feature/phase3-api-rest`.
-- Objectifs :
-  1. DTOs d'entrées et de sorties sous forme de `record` Java 25 (`fr.univ.billetterie.dto`).
-  2. Exceptions métier (`RessourceIntrouvableException`, `CapaciteInsuffisanteException`, `ConflitMetierException`) dans `fr.univ.billetterie.exception`.
-  3. Gestionnaire global d'exceptions `GlobalExceptionHandler` avec format `ErreurResponse` normé.
-  4. Services métier transactionnels (`FilmService`, `SalleService`, `SeanceService`, `ReservationService`).
-  5. Configuration Spring Security stateless avec HTTP Basic et 3 rôles (`CLIENT`, `PROGRAMMATEUR`, `ADMIN`).
-  6. Contrôleurs REST (`FilmController`, `SalleController`, `SeanceController`, `ReservationController`).
-  7. Tests automatisés couvrant les contrôles de recette A3, A4, A5, A6, A7, A9.
-  8. Merge sur `main` et push vers GitHub.
-
+### Phase 3 (Terminée & Validée)
+- **DTOs immuables (`fr.univ.billetterie.dto`) :**
+  - Requêtes : `FilmCreationRequest`, `SalleCreationRequest`, `SeanceCreationRequest`, `ReservationCreationRequest` avec annotations Jakarta (`@NotBlank`, `@Min`, `@Max`, `@Positive`, `@Email`).
+  - Réponses : `FilmResponse`, `SalleResponse`, `SeanceResponse`, `ReservationResponse`, `ErreurResponse`.
+- **Exceptions métier & Gestionnaire global (`fr.univ.billetterie.exception` & `controller`) :**
+  - `RessourceIntrouvableException` (404), `CapaciteInsuffisanteException` (409), `ConflitMetierException` (409).
+  - `GlobalExceptionHandler` annoté `@RestControllerAdvice` formatant les erreurs en JSON stable sans trace de pile.
+- **Couche service transactionnelle (`fr.univ.billetterie.service`) :**
+  - `FilmService`, `SalleService` (contrôle d'unicité), `SeanceService` (contrôle d'existence), `ReservationService` (verrouillage pessimiste, contrôle de capacité, calcul du montant total, annulation).
+- **Sécurité HTTP Basic stateless (`fr.univ.billetterie.config.SecurityConfig`) :**
+  - Mots de passe hachés BCrypt, 3 comptes en mémoire (`client`, `programmateur`, `admin`).
+  - Autorisations fines par rôles et endpoints publics pour consultation et santé.
+- **Contrôleurs REST fins (`fr.univ.billetterie.controller`) :**
+  - `FilmController`, `SalleController`, `SeanceController`, `ReservationController` avec codes HTTP appropriés (200, 201 avec header Location, 204).
+- **Tests d'intégration (`BilletterieIntegrationTest`) :**
+  - Couverture des recettes du sujet : A3 (consultation publique), A4 (validation 400), A5 (sécurité 401/403/201), A6 & A7 (réservation 201 et saturation 409), A9 (annulation 204 et libération de places).
+  - Suite complète (7 tests) validée avec succès sur conteneur MySQL 8.4 réel.
