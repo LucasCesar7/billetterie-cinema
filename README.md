@@ -88,6 +88,11 @@ Une fois la commande `clean verify` ou `clean package` exécutée, l'archive ex�
 ```bash
 java -jar target/billetterie-cinema-0.0.1-SNAPSHOT.jar
 ```
+Pour démarrer directement l'application en mode développement avec le JDK détecté par le wrapper (sans devoir manipuler manuellement `JAVA_HOME`) :
+
+```powershell
+.\mvnw.cmd spring-boot:run
+```
 L'application démarre par défaut sur le port HTTP `8080`.
 
 ---
